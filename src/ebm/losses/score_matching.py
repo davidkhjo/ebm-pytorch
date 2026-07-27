@@ -7,6 +7,8 @@ gradient is taken with ``create_graph=True``.
 
 from __future__ import annotations
 
+import math
+
 import torch
 from torch import Tensor, nn
 
@@ -16,6 +18,17 @@ from ebm.losses.base import LossOutput
 
 def _flat_sum(x: Tensor) -> Tensor:
     return x.reshape(x.shape[0], -1).sum(dim=1)
+
+
+def geometric_sigmas(sigma_max: float, sigma_min: float, n: int) -> Tensor:
+    """Descending geometric noise ladder from ``sigma_max`` to ``sigma_min``.
+
+    The standard NCSN schedule; pass to ``MultiSigmaDenoisingScoreMatching``
+    and ``AnnealedLangevinDynamics``.
+    """
+    if not (sigma_max > sigma_min > 0):
+        raise ValueError("need sigma_max > sigma_min > 0")
+    return torch.logspace(math.log10(sigma_max), math.log10(sigma_min), n)
 
 
 class DenoisingScoreMatching(nn.Module):
@@ -36,6 +49,42 @@ class DenoisingScoreMatching(nn.Module):
         s = score(energy, x_noisy, create_graph=True)
         target = -noise / self.sigma
         loss = 0.5 * _flat_sum((s - target).pow(2)).mean()
+        return LossOutput(loss=loss, metrics={"loss": loss.item()})
+
+
+class MultiSigmaDenoisingScoreMatching(nn.Module):
+    """NCSN-style DSM across a noise ladder (Song & Ermon, 2019).
+
+    Expects a *noise-conditional* energy ``energy(x, sigma) -> (B,)`` (see
+    ``ebm.nets.NoiseConditionalMLPEnergy``). Each sample gets a random level
+    from ``sigmas``; the per-level losses are combined with the standard
+    ``sigma**2`` weighting, written in its stable form
+    ``L = 1/2 E‖sigma * s(x + sigma*eps, sigma) + eps‖²``.
+
+    Sample from the trained model with ``AnnealedLangevinDynamics`` over the
+    same ladder.
+    """
+
+    def __init__(self, sigmas: Tensor):
+        super().__init__()
+        sigmas = torch.as_tensor(sigmas, dtype=torch.float32)
+        if sigmas.dim() != 1 or (sigmas <= 0).any():
+            raise ValueError("sigmas must be a 1D tensor of positive values")
+        self.register_buffer("sigmas", sigmas)
+
+    def forward(self, energy, x: Tensor) -> LossOutput:
+        batch_size = x.shape[0]
+        idx = torch.randint(len(self.sigmas), (batch_size,), device=x.device)
+        sigma = self.sigmas[idx]
+        sigma_b = sigma.reshape(batch_size, *([1] * (x.dim() - 1)))
+
+        noise = torch.randn_like(x)
+        x_noisy = (x + sigma_b * noise).detach().requires_grad_(True)
+        e = energy(x_noisy, sigma)
+        (grad_e,) = torch.autograd.grad(e.sum(), x_noisy, create_graph=True)
+        s = -grad_e
+
+        loss = 0.5 * _flat_sum((sigma_b * s + noise).pow(2)).mean()
         return LossOutput(loss=loss, metrics={"loss": loss.item()})
 
 
