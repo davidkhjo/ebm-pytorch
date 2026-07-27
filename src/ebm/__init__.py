@@ -7,6 +7,7 @@ An energy function is any callable ``(B, *event_shape) -> (B,)``.
 from ebm import datasets, eval, nets, viz
 from ebm.buffer import ReplayBuffer
 from ebm.energy import EnergyFn, EnergyModel, score
+from ebm.jem import ClassifierEnergy, ConditionalEnergy, JEMLoss
 from ebm.losses import (
     ContrastiveDivergence,
     DenoisingScoreMatching,
@@ -24,6 +25,9 @@ __all__ = [
     "EnergyFn",
     "EnergyModel",
     "score",
+    "ClassifierEnergy",
+    "ConditionalEnergy",
+    "JEMLoss",
     "Sampler",
     "LangevinDynamics",
     "MALA",
