@@ -96,7 +96,7 @@ def test_ncsn_end_to_end():
     # Trained score tracks the analytic smoothed score at both ends of the ladder.
     grid = torch.linspace(-3, 3, 200).reshape(-1, 1)
     for sigma in (sigmas[0], sigmas[-1]):
-        s_model = ebm.score(lambda z: net(z, sigma.expand(len(z))), grid).squeeze(1)
+        s_model = ebm.score(lambda z, s=sigma: net(z, s.expand(len(z))), grid).squeeze(1)
         s_true = (-grid / (1 + sigma**2)).squeeze(1)
         cos = torch.nn.functional.cosine_similarity(s_model, s_true, dim=0)
         assert cos.item() > 0.9

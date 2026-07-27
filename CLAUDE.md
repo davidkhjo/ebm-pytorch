@@ -18,6 +18,10 @@ runtime dependency.
   frozen during sampling (`ebm.utils.frozen_params`). Score-matching losses use
   `create_graph=True` instead.
 - Losses are `nn.Module`s returning `LossOutput(loss, metrics, x_neg)`.
+  Supervised losses (e.g. `JEMLoss`) set a class attribute `supervised = True`
+  and are called as `loss_fn(energy, x, y)` by the Trainer.
+- Noise-conditional energies follow `ConditionalEnergyFn`: `(x, sigma) -> (B,)`
+  with sigma `(B,)`; adapt to plain-energy APIs via closures.
 - No BatchNorm in energy networks; SiLU activations; spectral norm is a flag.
 
 ## Research context

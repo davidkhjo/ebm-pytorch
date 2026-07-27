@@ -49,11 +49,13 @@ for step in range(3000):
 
 | Piece | Contents |
 |---|---|
-| **Energies** | any callable `(B, *shape) -> (B,)`; `EnergyModel` wrapper, `ebm.score`, `nets.MLPEnergy` / `nets.ConvEnergy` (SiLU, optional spectral norm, no batch norm) |
-| **Samplers** | `LangevinDynamics` (ULA/SGLD with decoupled step/noise, gradient clipping, sample clamping), `MALA`, `HMC` — all with `sample(energy, x0, steps=..., return_trajectory=...)` |
-| **Losses** | `ContrastiveDivergence` (CD-k / persistent CD via `ReplayBuffer`, optional energy regularization), `DenoisingScoreMatching`, `SlicedScoreMatching` (VR variant), `NoiseContrastiveEstimation` (learnable `log_z`) |
-| **Training** | thin `Trainer` (device, optimizer incl. loss params, EMA weights, metric history), `EMA` |
-| **Data & eval** | 2D toy datasets (`two_moons`, `eight_gaussians`, `checkerboard`, `rings`, `spirals`), `eval.ood_auroc`, `viz.energy_contour` / `plot_samples` / `energy_histogram` |
+| **Energies** | any callable `(B, *shape) -> (B,)`; `EnergyModel` wrapper, `ebm.score`, `nets.MLPEnergy` / `nets.ConvEnergy` (SiLU, optional spectral norm, no batch norm); noise-conditional variants for NCSN |
+| **Samplers** | `LangevinDynamics` (ULA/SGLD with decoupled step/noise, gradient clipping, sample clamping), `MALA`, `HMC`, `GibbsWithGradients` (binary data), `AnnealedLangevinDynamics` (noise ladder) |
+| **Losses** | `ContrastiveDivergence` (CD-k / persistent CD via `ReplayBuffer`), `DenoisingScoreMatching` + `MultiSigmaDenoisingScoreMatching` (NCSN), `SlicedScoreMatching` (VR variant), `NoiseContrastiveEstimation` (learnable `log_z`), `JEMLoss` (classifier + EBM) |
+| **JEM** | `ClassifierEnergy`: any K-class classifier as an EBM (`E(x) = -logsumexp logits`), class-conditional sampling via `.condition(y)` |
+| **Training** | thin `Trainer` (device, optimizer incl. loss params, EMA weights, supervised `(x, y)` batches, metric history), `EMA` |
+| **Eval** | **`ais_log_z`** — annealed importance sampling for log-likelihood (nats or bits/dim), `eval.ood_auroc`, energy histograms |
+| **Data & viz** | 2D toy datasets (`two_moons`, `eight_gaussians`, `checkerboard`, `rings`, `spirals`), `viz.energy_contour` / `plot_samples` / `energy_histogram` |
 
 ## Conventions that matter
 
@@ -83,11 +85,21 @@ uv run ruff check .
 
 Design notes and the research that informed this library live in `research/`.
 
+## Evaluating log-likelihood
+
+```python
+result = ebm.ais_log_z(energy, shape=(2,), n_temps=1000, n_chains=256)
+bits = ebm.log_likelihood(energy, x_test, result.log_z, dim=2)  # bits/dim
+```
+
+AIS is a stochastic lower bound on `log Z` — increase `n_temps` until the
+estimate stabilizes and check `result.ess`.
+
 ## Roadmap
 
-AIS log-likelihood estimation, conditional/JEM-style EBMs, discrete EBM samplers
-(Gibbs-with-gradients), multi-sigma DSM with annealed Langevin, energy composition
-(products of experts, tempering).
+FID wrapper, reverse AIS / RAISE bracketing, diffusion recovery likelihood,
+energy composition (products of experts, tempering), categorical
+Gibbs-with-Gradients.
 
 ## License
 
