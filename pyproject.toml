@@ -1,0 +1,53 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ebm-pytorch"
+version = "0.1.0"
+description = "A PyTorch library for training and using energy-based models (EBMs)"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [{ name = "David" }]
+keywords = [
+    "energy-based-models",
+    "ebm",
+    "generative-models",
+    "langevin-dynamics",
+    "contrastive-divergence",
+    "score-matching",
+    "pytorch",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = ["torch>=2.0"]
+
+[project.optional-dependencies]
+viz = ["matplotlib>=3.7"]
+dev = ["pytest>=8.0", "ruff>=0.4", "matplotlib>=3.7"]
+
+[project.urls]
+Homepage = "https://github.com/cortify/ebm-pytorch"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ebm"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
