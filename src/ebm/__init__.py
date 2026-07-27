@@ -5,6 +5,7 @@ An energy function is any callable ``(B, *event_shape) -> (B,)``.
 """
 
 from ebm import datasets, eval, nets, viz
+from ebm.ais import AISResult, ais_log_z, log_likelihood
 from ebm.buffer import ReplayBuffer
 from ebm.energy import EnergyFn, EnergyModel, score
 from ebm.jem import ClassifierEnergy, ConditionalEnergy, JEMLoss
@@ -41,6 +42,9 @@ __all__ = [
     "NoiseContrastiveEstimation",
     "Trainer",
     "EMA",
+    "ais_log_z",
+    "log_likelihood",
+    "AISResult",
     "datasets",
     "eval",
     "nets",
