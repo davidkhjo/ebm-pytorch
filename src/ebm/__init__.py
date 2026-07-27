@@ -14,7 +14,7 @@ from ebm.losses import (
     NoiseContrastiveEstimation,
     SlicedScoreMatching,
 )
-from ebm.samplers import HMC, MALA, LangevinDynamics, Sampler
+from ebm.samplers import HMC, MALA, GibbsWithGradients, LangevinDynamics, Sampler
 from ebm.training import Trainer
 from ebm.utils import EMA
 
@@ -28,6 +28,7 @@ __all__ = [
     "LangevinDynamics",
     "MALA",
     "HMC",
+    "GibbsWithGradients",
     "ReplayBuffer",
     "LossOutput",
     "ContrastiveDivergence",
