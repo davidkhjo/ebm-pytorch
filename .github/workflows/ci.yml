@@ -18,10 +18,12 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install (CPU torch)
-        run: uv pip install --system -e ".[dev]" --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple
+        run: |
+          uv venv
+          uv pip install -e ".[dev]" --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple
       - name: Lint
         run: |
-          ruff check .
-          ruff format --check .
+          uv run ruff check .
+          uv run ruff format --check .
       - name: Test
-        run: pytest
+        run: uv run pytest
