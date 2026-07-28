@@ -53,6 +53,7 @@ for step in range(3000):
 | **Samplers** | `LangevinDynamics` (ULA/SGLD with decoupled step/noise, gradient clipping, sample clamping), `MALA`, `HMC`, `GibbsWithGradients` (binary data), `AnnealedLangevinDynamics` (noise ladder) |
 | **Losses** | `ContrastiveDivergence` (CD-k / persistent CD via `ReplayBuffer`), `DenoisingScoreMatching` + `MultiSigmaDenoisingScoreMatching` (NCSN), `SlicedScoreMatching` (VR variant), `NoiseContrastiveEstimation` (learnable `log_z`), `JEMLoss` (classifier + EBM) |
 | **JEM** | `ClassifierEnergy`: any K-class classifier as an EBM (`E(x) = -logsumexp logits`), class-conditional sampling via `.condition(y)` |
+| **Composition** | `SumEnergy` (product of experts), `MixtureEnergy`, `TemperedEnergy` — energies compose like densities and nest freely |
 | **Training** | thin `Trainer` (device, optimizer incl. loss params, EMA weights, supervised `(x, y)` batches, metric history), `EMA` |
 | **Eval** | **`ais_log_z`** — annealed importance sampling for log-likelihood (nats or bits/dim), `eval.ood_auroc`, energy histograms |
 | **Data & viz** | 2D toy datasets (`two_moons`, `eight_gaussians`, `checkerboard`, `rings`, `spirals`), `viz.energy_contour` / `plot_samples` / `energy_histogram` |
@@ -98,8 +99,7 @@ estimate stabilizes and check `result.ess`.
 ## Roadmap
 
 FID wrapper, reverse AIS / RAISE bracketing, diffusion recovery likelihood,
-energy composition (products of experts, tempering), categorical
-Gibbs-with-Gradients.
+categorical Gibbs-with-Gradients.
 
 ## License
 

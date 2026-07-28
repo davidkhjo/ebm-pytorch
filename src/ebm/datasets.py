@@ -12,7 +12,13 @@ import torch
 from torch import Tensor
 
 
-def two_moons(n: int, noise: float = 0.1, generator: torch.Generator | None = None) -> Tensor:
+def two_moons(
+    n: int,
+    noise: float = 0.1,
+    generator: torch.Generator | None = None,
+    return_labels: bool = False,
+) -> Tensor | tuple[Tensor, Tensor]:
+    """Two interleaved moons; with ``return_labels`` also returns 0/1 moon labels."""
     n_upper = n // 2
     n_lower = n - n_upper
     theta_u = math.pi * torch.rand(n_upper, generator=generator)
@@ -21,7 +27,12 @@ def two_moons(n: int, noise: float = 0.1, generator: torch.Generator | None = No
     lower = torch.stack([1 - torch.cos(theta_l), 0.5 - torch.sin(theta_l)], dim=1)
     x = torch.cat([upper, lower]) + noise * torch.randn(n, 2, generator=generator)
     x = x - torch.tensor([0.5, 0.25])
-    return x[torch.randperm(n, generator=generator)].float()
+    y = torch.cat([torch.zeros(n_upper, dtype=torch.long), torch.ones(n_lower, dtype=torch.long)])
+    perm = torch.randperm(n, generator=generator)
+    x = x[perm].float()
+    if return_labels:
+        return x, y[perm]
+    return x
 
 
 def eight_gaussians(n: int, std: float = 0.15, generator: torch.Generator | None = None) -> Tensor:
