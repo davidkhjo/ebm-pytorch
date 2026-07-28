@@ -50,12 +50,12 @@ for step in range(3000):
 | Piece | Contents |
 |---|---|
 | **Energies** | any callable `(B, *shape) -> (B,)`; `EnergyModel` wrapper, `ebm.score`, `nets.MLPEnergy` / `nets.ConvEnergy` (SiLU, optional spectral norm, no batch norm); noise-conditional variants for NCSN |
-| **Samplers** | `LangevinDynamics` (ULA/SGLD with decoupled step/noise, gradient clipping, sample clamping), `MALA`, `HMC`, `GibbsWithGradients` (binary data), `AnnealedLangevinDynamics` (noise ladder) |
+| **Samplers** | `LangevinDynamics` (ULA/SGLD with decoupled step/noise, gradient clipping, sample clamping), `MALA`, `HMC`, `GibbsWithGradients` (binary) + `CategoricalGibbsWithGradients` (one-hot), `AnnealedLangevinDynamics` (noise ladder) |
 | **Losses** | `ContrastiveDivergence` (CD-k / persistent CD via `ReplayBuffer`), `DenoisingScoreMatching` + `MultiSigmaDenoisingScoreMatching` (NCSN), `SlicedScoreMatching` (VR variant), `NoiseContrastiveEstimation` (learnable `log_z`), `JEMLoss` (classifier + EBM) |
 | **JEM** | `ClassifierEnergy`: any K-class classifier as an EBM (`E(x) = -logsumexp logits`), class-conditional sampling via `.condition(y)` |
 | **Composition** | `SumEnergy` (product of experts), `MixtureEnergy`, `TemperedEnergy` — energies compose like densities and nest freely |
 | **Training** | thin `Trainer` (device, optimizer incl. loss params, EMA weights, supervised `(x, y)` batches, metric history), `EMA` |
-| **Eval** | **`ais_log_z`** — annealed importance sampling for log-likelihood (nats or bits/dim), `eval.ood_auroc`, energy histograms |
+| **Eval** | **`ais_log_z` / `reverse_ais_log_z`** — bracket `log Z` from below and above for honest log-likelihoods (nats or bits/dim), `eval.frechet_distance` (FID with any feature extractor), `eval.ood_auroc`, energy histograms |
 | **Data & viz** | 2D toy datasets (`two_moons`, `eight_gaussians`, `checkerboard`, `rings`, `spirals`), `viz.energy_contour` / `plot_samples` / `energy_histogram` |
 
 ## Conventions that matter
@@ -89,17 +89,18 @@ Design notes and the research that informed this library live in `research/`.
 ## Evaluating log-likelihood
 
 ```python
-result = ebm.ais_log_z(energy, shape=(2,), n_temps=1000, n_chains=256)
-bits = ebm.log_likelihood(energy, x_test, result.log_z, dim=2)  # bits/dim
+lower = ebm.ais_log_z(energy, shape=(2,), n_temps=1000, n_chains=256)
+upper = ebm.reverse_ais_log_z(energy, lower.samples, n_temps=1000)
+bits = ebm.log_likelihood(energy, x_test, lower.log_z, dim=2)  # bits/dim
 ```
 
-AIS is a stochastic lower bound on `log Z` — increase `n_temps` until the
-estimate stabilizes and check `result.ess`.
+Forward AIS is a stochastic *lower* bound on `log Z`; reverse AIS (run from
+model samples) is a stochastic *upper* bound. When the two agree, trust the
+number; when they don't, increase `n_temps` and check `.ess`.
 
 ## Roadmap
 
-FID wrapper, reverse AIS / RAISE bracketing, diffusion recovery likelihood,
-categorical Gibbs-with-Gradients.
+Diffusion recovery likelihood, PyPI release, docs site.
 
 ## License
 
