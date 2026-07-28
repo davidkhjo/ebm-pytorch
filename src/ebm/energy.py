@@ -16,6 +16,13 @@ from torch import Tensor, nn
 EnergyFn = Callable[[Tensor], Tensor]
 """Any callable mapping ``(B, *event_shape)`` to per-sample energies ``(B,)``."""
 
+ConditionalEnergyFn = Callable[[Tensor, Tensor], Tensor]
+"""A noise-conditional energy ``(x: (B, *shape), sigma: (B,)) -> (B,)``.
+
+Fix the condition with a closure — ``lambda x: energy(x, sigma)`` — to obtain
+a plain ``EnergyFn`` usable with every sampler and evaluation utility.
+"""
+
 
 def score(energy: EnergyFn, x: Tensor, *, create_graph: bool = False) -> Tensor:
     """Score function ``∇_x log p(x) = -∇_x E(x)``.

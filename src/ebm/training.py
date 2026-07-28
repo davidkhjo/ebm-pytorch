@@ -55,6 +55,7 @@ class Trainer:
             optimizer = torch.optim.Adam(params, lr=lr)
         self.optimizer = optimizer
 
+        self._supervised = bool(getattr(loss_fn, "supervised", False))
         self.ema = EMA(self.energy, ema_decay) if ema_decay is not None else None
         self.grad_clip_norm = grad_clip_norm
         self.log_every = log_every
@@ -64,7 +65,7 @@ class Trainer:
 
     def fit(
         self,
-        data: Tensor | Iterable[Tensor],
+        data: Tensor | tuple[Tensor, ...] | Iterable,
         steps: int = 10_000,
         batch_size: int = 128,
         verbose: bool = True,
@@ -72,13 +73,26 @@ class Trainer:
         """Train for ``steps`` optimizer steps; returns the metric history.
 
         ``data`` may be a single tensor ``(N, *shape)`` (random batches are
-        drawn) or any iterable of batches (e.g. a ``DataLoader``, cycled).
+        drawn), an ``(X, Y)`` tensor pair for supervised losses (joint random
+        batches), or any iterable of batches (e.g. a ``DataLoader``, cycled).
+        Losses with a ``supervised = True`` attribute (e.g. ``JEMLoss``) are
+        called as ``loss_fn(energy, x, y)``; labels are dropped otherwise.
         """
         batches = _batch_iterator(data, batch_size)
         self.energy.train()
         for _ in range(steps):
-            x = next(batches).to(self.device)
-            out = self.loss_fn(self.energy, x)
+            batch = next(batches)
+            if isinstance(batch, (tuple, list)):
+                x = batch[0].to(self.device)
+                y = batch[1].to(self.device) if len(batch) > 1 else None
+            else:
+                x, y = batch.to(self.device), None
+            if self._supervised:
+                if y is None:
+                    raise ValueError("supervised loss requires (x, y) batches")
+                out = self.loss_fn(self.energy, x, y)
+            else:
+                out = self.loss_fn(self.energy, x)
 
             self.optimizer.zero_grad(set_to_none=True)
             out.loss.backward()
@@ -108,18 +122,21 @@ def _default_device() -> torch.device:
     return torch.device("cpu")
 
 
-def _batch_iterator(data: Tensor | Iterable[Tensor], batch_size: int):
+def _batch_iterator(data, batch_size: int):
     if isinstance(data, Tensor):
         n = data.shape[0]
         while True:
             idx = torch.randint(n, (batch_size,))
             yield data[idx]
+    elif isinstance(data, (tuple, list)) and all(isinstance(t, Tensor) for t in data):
+        n = data[0].shape[0]
+        while True:
+            idx = torch.randint(n, (batch_size,))
+            yield tuple(t[idx] for t in data)
     else:
         while True:
             yielded = False
             for batch in data:
-                if isinstance(batch, (tuple, list)):
-                    batch = batch[0]
                 yielded = True
                 yield batch
             if not yielded:

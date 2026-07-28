@@ -1,8 +1,8 @@
 """Evaluation helpers.
 
-EBMs are hard to evaluate absolutely (the partition function is intractable);
-these utilities cover the common relative diagnostics. AIS-based log-likelihood
-estimation is on the roadmap.
+Relative diagnostics (OOD scores, batched energies) plus absolute
+log-likelihood via annealed importance sampling (``ais_log_z`` /
+``log_likelihood``, implemented in ``ebm.ais`` and re-exported here).
 """
 
 from __future__ import annotations
@@ -10,7 +10,10 @@ from __future__ import annotations
 import torch
 from torch import Tensor
 
+from ebm.ais import AISResult, ais_log_z, log_likelihood
 from ebm.energy import EnergyFn
+
+__all__ = ["energies", "ood_auroc", "ais_log_z", "log_likelihood", "AISResult"]
 
 
 @torch.no_grad()
