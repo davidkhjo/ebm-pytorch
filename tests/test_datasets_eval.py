@@ -47,6 +47,40 @@ def test_batched_energies():
     assert torch.allclose(e, quadratic_energy(x), atol=1e-5)
 
 
+def test_frechet_distance_zero_on_identical_sets():
+    x = torch.randn(3000, 2)
+    assert ebm.eval.frechet_distance(x, x.clone()) < 1e-8
+
+
+def test_frechet_distance_matches_gaussian_closed_form():
+    # Diagonal Gaussians: FD = ||mu1 - mu2||^2 + sum_i (s1_i - s2_i)^2.
+    g = torch.Generator().manual_seed(0)
+    x = torch.randn(20000, 2, generator=g)  # N(0, I)
+    shift = torch.tensor([3.0, 0.0])
+    scale = torch.tensor([1.0, 2.0])
+    y = scale * torch.randn(20000, 2, generator=g) + shift  # N(shift, diag(1, 4))
+    expected = 3.0**2 + (2.0 - 1.0) ** 2
+    fd = ebm.eval.frechet_distance(x, y)
+    assert abs(fd - expected) < 0.3
+    # Symmetric in its arguments.
+    assert abs(ebm.eval.frechet_distance(y, x) - fd) < 1e-6
+
+
+def test_frechet_distance_feature_fn_and_shapes():
+    g = torch.Generator().manual_seed(1)
+    x = torch.randn(1000, 3, 2, generator=g)  # non-flat event shape
+    y = torch.randn(1000, 3, 2, generator=g) + 1.0
+    plain = ebm.eval.frechet_distance(x, y)
+    assert plain > 0
+    # An identity feature_fn (with batching) must agree with the direct path.
+    ident = ebm.eval.frechet_distance(x, y, feature_fn=lambda t: t, batch_size=256)
+    assert abs(ident - plain) < 1e-8
+    # A projection feature works and changes the value.
+    w = torch.randn(6, 4, generator=g)
+    proj = ebm.eval.frechet_distance(x, y, feature_fn=lambda t: t.reshape(len(t), -1) @ w)
+    assert proj > 0
+
+
 def test_two_moons_labels():
     x, y = ebm.datasets.two_moons(200, return_labels=True)
     assert x.shape == (200, 2) and y.shape == (200,)
