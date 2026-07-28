@@ -10,10 +10,17 @@ from __future__ import annotations
 import torch
 from torch import Tensor
 
-from ebm.ais import AISResult, ais_log_z, log_likelihood
+from ebm.ais import AISResult, ais_log_z, log_likelihood, reverse_ais_log_z
 from ebm.energy import EnergyFn
 
-__all__ = ["energies", "ood_auroc", "ais_log_z", "log_likelihood", "AISResult"]
+__all__ = [
+    "energies",
+    "ood_auroc",
+    "ais_log_z",
+    "reverse_ais_log_z",
+    "log_likelihood",
+    "AISResult",
+]
 
 
 @torch.no_grad()
