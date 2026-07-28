@@ -45,3 +45,11 @@ def test_batched_energies():
     e = ebm.eval.energies(quadratic_energy, x, batch_size=1000)
     assert e.shape == (2500,)
     assert torch.allclose(e, quadratic_energy(x), atol=1e-5)
+
+
+def test_two_moons_labels():
+    x, y = ebm.datasets.two_moons(200, return_labels=True)
+    assert x.shape == (200, 2) and y.shape == (200,)
+    assert set(y.unique().tolist()) == {0, 1}
+    # Upper moon (label 0) sits higher on average than the lower moon.
+    assert x[y == 0][:, 1].mean() > x[y == 1][:, 1].mean()
