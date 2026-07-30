@@ -51,7 +51,7 @@ for step in range(3000):
 |---|---|
 | **Energies** | any callable `(B, *shape) -> (B,)`; `EnergyModel` wrapper, `ebm.score`, `nets.MLPEnergy` / `nets.ConvEnergy` (SiLU, optional spectral norm, no batch norm); noise-conditional variants for NCSN |
 | **Samplers** | `LangevinDynamics` (ULA/SGLD with decoupled step/noise, gradient clipping, sample clamping), `MALA`, `HMC`, `GibbsWithGradients` (binary) + `CategoricalGibbsWithGradients` (one-hot), `AnnealedLangevinDynamics` (noise ladder) |
-| **Losses** | `ContrastiveDivergence` (CD-k / persistent CD via `ReplayBuffer`), `DenoisingScoreMatching` + `MultiSigmaDenoisingScoreMatching` (NCSN), `SlicedScoreMatching` (VR variant), `NoiseContrastiveEstimation` (learnable `log_z`), `JEMLoss` (classifier + EBM) |
+| **Losses** | `ContrastiveDivergence` (CD-k / persistent CD via `ReplayBuffer`), `DiffusionRecoveryLikelihood` + `drl_sample` (recovery likelihood on a noise ladder — the most stable EBM training known), `DenoisingScoreMatching` + `MultiSigmaDenoisingScoreMatching` (NCSN), `SlicedScoreMatching` (VR variant), `NoiseContrastiveEstimation` (learnable `log_z`), `JEMLoss` (classifier + EBM) |
 | **JEM** | `ClassifierEnergy`: any K-class classifier as an EBM (`E(x) = -logsumexp logits`), class-conditional sampling via `.condition(y)` |
 | **Composition** | `SumEnergy` (product of experts), `MixtureEnergy`, `TemperedEnergy` — energies compose like densities and nest freely |
 | **Training** | thin `Trainer` (device, optimizer incl. loss params, EMA weights, supervised `(x, y)` batches, metric history), `EMA` |
@@ -69,6 +69,10 @@ for step in range(3000):
 - **The CD loss value is not a convergence signal.** It hovers near zero (or goes
   negative) at equilibrium — monitor `metrics["energy_gap"]` and the energy
   histograms instead.
+- **When plain CD won't converge, tether the sampler.** Diffusion recovery
+  likelihood trains the same noise-conditional energies as NCSN but samples
+  only the *conditional* `p(x | x̃) ∝ exp(-E(x,σ) - ‖x̃-x‖²/2s²)` between
+  adjacent noise levels — near-unimodal, so short-run MCMC genuinely mixes.
 - **Two Langevin regimes, one keyword apart:** `noise_scale=None` gives the
   mathematically correct `sqrt(2*step_size)` noise (convergent training, toy data);
   practitioner "short-run" image training uses a cold, decoupled noise, e.g.
@@ -100,7 +104,7 @@ number; when they don't, increase `n_temps` and check `.ess`.
 
 ## Roadmap
 
-Diffusion recovery likelihood, PyPI release, docs site.
+PyPI release, docs site.
 
 ## License
 

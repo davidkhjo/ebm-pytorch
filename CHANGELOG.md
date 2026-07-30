@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.0 — 2026-07-30
+
+- Diffusion recovery likelihood (Gao et al. 2021): `DiffusionRecoveryLikelihood`
+  loss (CD on the tethered recovery posterior between adjacent noise levels)
+  and `drl_sample` progressive generation; reuses the noise-conditional nets
+  and `geometric_sigmas`.
+- `py.typed` marker (PEP 561) — the library ships its type annotations.
+
 ## 0.4.0 — 2026-07-28
 
 - `reverse_ais_log_z`: RAISE-style reverse AIS from model samples — a
