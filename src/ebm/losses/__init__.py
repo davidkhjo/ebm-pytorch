@@ -1,5 +1,6 @@
 from ebm.losses.base import LossOutput
 from ebm.losses.cd import ContrastiveDivergence
+from ebm.losses.drl import DiffusionRecoveryLikelihood, drl_sample
 from ebm.losses.nce import NoiseContrastiveEstimation
 from ebm.losses.score_matching import (
     DenoisingScoreMatching,
@@ -11,6 +12,8 @@ from ebm.losses.score_matching import (
 __all__ = [
     "LossOutput",
     "ContrastiveDivergence",
+    "DiffusionRecoveryLikelihood",
+    "drl_sample",
     "DenoisingScoreMatching",
     "MultiSigmaDenoisingScoreMatching",
     "SlicedScoreMatching",
