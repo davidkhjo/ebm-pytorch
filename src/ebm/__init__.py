@@ -13,10 +13,12 @@ from ebm.jem import ClassifierEnergy, ConditionalEnergy, JEMLoss
 from ebm.losses import (
     ContrastiveDivergence,
     DenoisingScoreMatching,
+    DiffusionRecoveryLikelihood,
     LossOutput,
     MultiSigmaDenoisingScoreMatching,
     NoiseContrastiveEstimation,
     SlicedScoreMatching,
+    drl_sample,
     geometric_sigmas,
 )
 from ebm.samplers import (
@@ -55,6 +57,8 @@ __all__ = [
     "LossOutput",
     "ContrastiveDivergence",
     "DenoisingScoreMatching",
+    "DiffusionRecoveryLikelihood",
+    "drl_sample",
     "MultiSigmaDenoisingScoreMatching",
     "SlicedScoreMatching",
     "NoiseContrastiveEstimation",
