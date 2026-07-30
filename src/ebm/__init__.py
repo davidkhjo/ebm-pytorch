@@ -5,7 +5,7 @@ An energy function is any callable ``(B, *event_shape) -> (B,)``.
 """
 
 from ebm import datasets, eval, nets, viz
-from ebm.ais import AISResult, ais_log_z, log_likelihood
+from ebm.ais import AISResult, ais_log_z, log_likelihood, reverse_ais_log_z
 from ebm.buffer import ReplayBuffer
 from ebm.compose import MixtureEnergy, SumEnergy, TemperedEnergy
 from ebm.energy import ConditionalEnergyFn, EnergyFn, EnergyModel, score
@@ -23,6 +23,7 @@ from ebm.samplers import (
     HMC,
     MALA,
     AnnealedLangevinDynamics,
+    CategoricalGibbsWithGradients,
     GibbsWithGradients,
     LangevinDynamics,
     Sampler,
@@ -30,7 +31,7 @@ from ebm.samplers import (
 from ebm.training import Trainer
 from ebm.utils import EMA
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 __all__ = [
     "EnergyFn",
@@ -48,6 +49,7 @@ __all__ = [
     "MALA",
     "HMC",
     "GibbsWithGradients",
+    "CategoricalGibbsWithGradients",
     "AnnealedLangevinDynamics",
     "ReplayBuffer",
     "LossOutput",
@@ -60,6 +62,7 @@ __all__ = [
     "Trainer",
     "EMA",
     "ais_log_z",
+    "reverse_ais_log_z",
     "log_likelihood",
     "AISResult",
     "datasets",

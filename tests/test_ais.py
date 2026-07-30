@@ -5,7 +5,7 @@ import math
 import torch
 
 import ebm
-from ebm.ais import ais_log_z, log_likelihood
+from ebm.ais import ais_log_z, log_likelihood, reverse_ais_log_z
 from tests.conftest import quadratic_energy
 
 TRUE_LOG_Z = math.log(2 * math.pi)  # E = ||x||^2/2 in 2D: Z = (2*pi)^{d/2}
@@ -57,6 +57,44 @@ def test_ais_custom_base_schedule_and_validation():
         except ValueError:
             continue
         raise AssertionError(f"expected ValueError for betas {bad}")
+
+
+def test_reverse_ais_recovers_gaussian_log_z():
+    # Exact model samples: E = ||x||^2/2 is N(0, I).
+    x = torch.randn(256, 2)
+    result = reverse_ais_log_z(quadratic_energy, x, base_scale=2.0, n_temps=40)
+    assert abs(result.log_z - TRUE_LOG_Z) < 0.15
+    assert 1.0 <= result.ess <= 256.0
+    assert result.stderr > 0
+    # Final states have annealed back to the base N(0, 4I).
+    assert result.samples.shape == (256, 2)
+    assert (result.samples.std() - 2.0).abs().item() < 0.3
+
+
+def test_forward_and_reverse_bracket_log_z():
+    # A target far from the base with a coarse schedule makes both estimators
+    # visibly biased in opposite directions. Individual runs are heavy-tailed,
+    # so assert the bracket on medians over seeded repetitions.
+    mu = torch.tensor([3.0, 3.0])
+
+    def shifted(z):
+        return 0.5 * ((z - mu) ** 2).sum(dim=-1)  # still log Z = log 2*pi
+
+    lowers, uppers = [], []
+    for seed in range(9):
+        torch.manual_seed(seed)
+        lowers.append(ais_log_z(shifted, (2,), n_temps=5, n_chains=128).log_z)
+        uppers.append(reverse_ais_log_z(shifted, mu + torch.randn(128, 2), n_temps=5).log_z)
+    lower, upper = torch.tensor(lowers).median(), torch.tensor(uppers).median()
+    assert lower < TRUE_LOG_Z < upper
+
+
+def test_reverse_ais_freezes_and_restores_module_params():
+    net = ebm.nets.MLPEnergy(dim=2, hidden=(16,))
+    result = reverse_ais_log_z(net, torch.randn(16, 2), n_temps=5)
+    assert math.isfinite(result.log_z)
+    assert all(p.requires_grad for p in net.parameters())
+    assert all(p.grad is None for p in net.parameters())
 
 
 def test_log_likelihood_matches_normal():

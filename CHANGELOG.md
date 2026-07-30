@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.0 — 2026-07-28
+
+- `reverse_ais_log_z`: RAISE-style reverse AIS from model samples — a
+  stochastic *upper* bound on `log Z` that brackets the `ais_log_z` lower
+  bound; shared annealing core, same schedules and diagnostics.
+- `CategoricalGibbsWithGradients`: exact locally-informed MH sampler for
+  one-hot categorical data `(B, *dims, K)`; verified against closed-form
+  categorical and Potts distributions.
+- `eval.frechet_distance`: pure-torch Fréchet distance (no scipy); pass an
+  Inception embedding as `feature_fn` for standard FID.
+
 ## 0.3.0 — 2026-07-28
 
 - Energy composition algebra: `SumEnergy` (product of experts), `MixtureEnergy`,

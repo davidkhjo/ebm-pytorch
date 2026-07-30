@@ -52,6 +52,54 @@ def test_gwg_event_shape_and_module_energy():
     assert all(p.requires_grad for p in energy.parameters())
 
 
+def onehot_init(n, d, k, generator=None):
+    return torch.nn.functional.one_hot(torch.randint(k, (n, d), generator=generator), k).float()
+
+
+def test_categorical_gwg_recovers_independent_marginals():
+    # E(x) = -sum theta * x over one-hot x  =>  p(x_i = k) = softmax(theta_i)_k.
+    theta = torch.tensor([[1.0, 0.0, -1.0], [0.5, 0.5, -0.5]])
+    energy = lambda x: -(x * theta).sum(dim=(1, 2))  # noqa: E731
+    sampler = ebm.CategoricalGibbsWithGradients(steps=60)
+    samples = sampler.sample(energy, onehot_init(2000, 2, 3))
+    marginals = samples.mean(0)
+    assert torch.allclose(marginals, torch.softmax(theta, dim=1), atol=0.05)
+
+
+def test_categorical_gwg_pairwise_coupling():
+    # Potts pair: E = -J * 1[c1 == c2] with K categories  =>
+    # P(c1 == c2) = e^J / (e^J + K - 1).
+    j, k = 1.0, 3
+    energy = lambda x: -j * (x[:, 0] * x[:, 1]).sum(dim=1)  # noqa: E731
+    sampler = ebm.CategoricalGibbsWithGradients(steps=50)
+    samples = sampler.sample(energy, onehot_init(4000, 2, k))
+    agree = (samples[:, 0].argmax(1) == samples[:, 1].argmax(1)).float().mean()
+    expected = torch.e**j / (torch.e**j + k - 1)
+    assert (agree - expected).abs().item() < 0.05
+
+
+def test_categorical_gwg_output_onehot_and_accept_rate():
+    theta = torch.tensor([[1.0, -1.0, 0.0], [0.0, 0.5, -0.5]])
+    energy = lambda x: -(x * theta).sum(dim=(1, 2))  # noqa: E731
+    sampler = ebm.CategoricalGibbsWithGradients(steps=20)
+    samples = sampler.sample(energy, onehot_init(500, 2, 3))
+    assert set(samples.unique().tolist()) <= {0.0, 1.0}
+    assert torch.all(samples.sum(dim=-1) == 1.0)  # exactly one-hot per position
+    # Linear energy: the first-order category-change estimate is exact.
+    assert 0.5 < sampler.last_accept_rate <= 1.0
+
+
+def test_categorical_gwg_module_energy_and_no_grad():
+    net = ebm.nets.MLPEnergy(dim=12, hidden=(16,))
+    energy = ebm.EnergyModel(nn.Sequential(nn.Flatten(), net.net))
+    sampler = ebm.CategoricalGibbsWithGradients(steps=5)
+    with torch.no_grad():
+        samples = sampler.sample(energy, onehot_init(8, 3, 4))
+    assert samples.shape == (8, 3, 4)
+    assert torch.all(samples.sum(dim=-1) == 1.0)
+    assert all(p.requires_grad for p in energy.parameters())
+
+
 class LinearBernoulliEnergy(nn.Module):
     def __init__(self, dim):
         super().__init__()

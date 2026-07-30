@@ -1,8 +1,9 @@
 """Evaluation helpers.
 
-Relative diagnostics (OOD scores, batched energies) plus absolute
-log-likelihood via annealed importance sampling (``ais_log_z`` /
-``log_likelihood``, implemented in ``ebm.ais`` and re-exported here).
+Relative diagnostics (OOD scores, batched energies, Fréchet distance / FID)
+plus absolute log-likelihood via annealed importance sampling (``ais_log_z`` /
+``reverse_ais_log_z`` / ``log_likelihood``, implemented in ``ebm.ais`` and
+re-exported here).
 """
 
 from __future__ import annotations
@@ -10,10 +11,18 @@ from __future__ import annotations
 import torch
 from torch import Tensor
 
-from ebm.ais import AISResult, ais_log_z, log_likelihood
+from ebm.ais import AISResult, ais_log_z, log_likelihood, reverse_ais_log_z
 from ebm.energy import EnergyFn
 
-__all__ = ["energies", "ood_auroc", "ais_log_z", "log_likelihood", "AISResult"]
+__all__ = [
+    "energies",
+    "frechet_distance",
+    "ood_auroc",
+    "ais_log_z",
+    "reverse_ais_log_z",
+    "log_likelihood",
+    "AISResult",
+]
 
 
 @torch.no_grad()
@@ -21,6 +30,50 @@ def energies(energy: EnergyFn, x: Tensor, batch_size: int = 1024) -> Tensor:
     """Energies of ``x`` computed in batches, returned on CPU."""
     out = [energy(chunk).detach().cpu() for chunk in x.split(batch_size)]
     return torch.cat(out)
+
+
+@torch.no_grad()
+def frechet_distance(
+    x: Tensor,
+    y: Tensor,
+    *,
+    feature_fn=None,
+    batch_size: int = 1024,
+) -> float:
+    """Fréchet distance between Gaussians fitted to two sample sets.
+
+    ``FD = ||μ_x - μ_y||² + Tr(Σ_x + Σ_y - 2 (Σ_x Σ_y)^{1/2})`` — 0 for
+    identical distributions, larger is worse. Computed in float64 with the
+    matrix square root taken by eigendecomposition; no scipy needed.
+
+    With ``feature_fn=None`` samples are compared directly (flattened) — the
+    right thing for toy data. Passing an Inception feature extractor (e.g.
+    torchvision's ``inception_v3`` up to the pool layer, or any
+    ``(B, *shape) -> (B, D)`` embedding network) makes this the standard
+    **FID**; features are extracted in ``batch_size`` chunks and gathered on
+    CPU. As always with FID, use a few thousand samples per side — small
+    sample sets bias the covariance term upward.
+    """
+
+    def _features(t: Tensor) -> Tensor:
+        if feature_fn is None:
+            return t.reshape(len(t), -1).cpu().double()
+        chunks = [feature_fn(c).detach().cpu() for c in t.split(batch_size)]
+        return torch.cat(chunks).reshape(len(t), -1).double()
+
+    fx, fy = _features(x), _features(y)
+    mu_x, mu_y = fx.mean(0), fy.mean(0)
+    cov_x = torch.cov(fx.T).reshape(fx.shape[1], -1)
+    cov_y = torch.cov(fy.T).reshape(fy.shape[1], -1)
+
+    # Tr((Σx Σy)^{1/2}) = Tr((√Σx Σy √Σx)^{1/2}), the latter symmetric PSD.
+    vals, vecs = torch.linalg.eigh(cov_x)
+    sqrt_x = (vecs * vals.clamp_min(0).sqrt()) @ vecs.T
+    inner = sqrt_x @ cov_y @ sqrt_x
+    tr_sqrt = torch.linalg.eigvalsh((inner + inner.T) / 2).clamp_min(0).sqrt().sum()
+
+    fd = ((mu_x - mu_y) ** 2).sum() + cov_x.trace() + cov_y.trace() - 2 * tr_sqrt
+    return float(fd.clamp_min(0))
 
 
 def ood_auroc(energy: EnergyFn, x_in: Tensor, x_out: Tensor) -> float:
