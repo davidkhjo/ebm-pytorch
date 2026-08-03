@@ -1,0 +1,39 @@
+name: docs
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: |
+          uv venv --clear
+          uv pip install -e ".[docs]" --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple
+      - name: Build (strict)
+        run: uv run mkdocs build --strict
+      - uses: actions/upload-pages-artifact@v3
+        if: github.event_name == 'push'
+        with:
+          path: site
+
+  deploy:
+    if: github.event_name == 'push'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

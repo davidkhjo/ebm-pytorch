@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.1 — 2026-08-03
+
+- Documentation site at https://dkjo8.github.io/ebm-pytorch/ (mkdocs-material +
+  mkdocstrings API reference; deployed from main).
+- PyPI trusted-publishing workflow: GitHub releases now publish `ebm-pytorch`
+  to PyPI automatically.
+
 ## 0.5.0 — 2026-07-30
 
 - Diffusion recovery likelihood (Gao et al. 2021): `DiffusionRecoveryLikelihood`
