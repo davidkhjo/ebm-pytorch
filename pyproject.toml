@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ebm-pytorch"
-version = "0.5.0"
+version = "0.5.1"
 description = "A PyTorch library for training and using energy-based models (EBMs)"
 readme = "README.md"
 license = "MIT"
@@ -34,9 +34,11 @@ dependencies = ["torch>=2.0"]
 [project.optional-dependencies]
 viz = ["matplotlib>=3.7"]
 dev = ["pytest>=8.0", "ruff>=0.4", "matplotlib>=3.7"]
+docs = ["mkdocs-material>=9", "mkdocstrings[python]>=0.24"]
 
 [project.urls]
 Homepage = "https://github.com/dkjo8/ebm-pytorch"
+Documentation = "https://dkjo8.github.io/ebm-pytorch/"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ebm"]

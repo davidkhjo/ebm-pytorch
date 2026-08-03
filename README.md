@@ -2,6 +2,8 @@
 
 A small, reliable PyTorch library for training and using **energy-based models** (EBMs).
 
+**Docs: https://dkjo8.github.io/ebm-pytorch/**
+
 An EBM defines an unnormalized density `p(x) ∝ exp(-E(x))` through a neural network
 `E: (B, *shape) -> (B,)`. This library provides the pieces that every EBM project
 rebuilds from scratch — MCMC samplers, training losses, replay buffers, diagnostics —
