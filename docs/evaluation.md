@@ -41,6 +41,14 @@ Pure torch (float64, eigendecomposition matrix square root — no scipy).
 an Inception embedding gives standard FID. Use a few thousand samples per side
 — small sets bias the covariance term upward.
 
+!!! warning "Fréchet distance only sees two moments"
+    A *blurred* version of the data matches mean and covariance almost
+    perfectly, so FD barely moves. `ebm.eval.mmd(x, y, bandwidth=...)` —
+    unbiased squared MMD with an RBF kernel — sees all moments; pick the
+    bandwidth at the scale of the structure you care about (the default
+    median heuristic is conservative). The [benchmarks](benchmarks.md) page
+    shows a case where FD and MMD genuinely disagree.
+
 ## Relative diagnostics
 
 - `ebm.eval.ood_auroc(energy, x_in, x_out)` — AUROC for separating

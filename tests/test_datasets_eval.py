@@ -81,6 +81,23 @@ def test_frechet_distance_feature_fn_and_shapes():
     assert proj > 0
 
 
+def test_mmd_zero_for_same_distribution_positive_for_blur():
+    g = torch.Generator().manual_seed(2)
+    moons_a = ebm.datasets.two_moons(1500, generator=g)
+    moons_b = ebm.datasets.two_moons(1500, generator=g)
+    same = ebm.eval.mmd(moons_a, moons_b)
+    assert abs(same) < 5e-3  # unbiased estimate can dip slightly below zero
+
+    # A blurred copy keeps mean/cov (frechet_distance barely moves), but MMD at
+    # a structure-scale bandwidth sees it clearly.
+    blurred = moons_a + 0.3 * torch.randn(1500, 2, generator=g)
+    same_03 = ebm.eval.mmd(moons_a, moons_b, bandwidth=0.3)
+    blur_03 = ebm.eval.mmd(moons_a, blurred, bandwidth=0.3)
+    assert blur_03 > 10 * abs(same_03)
+    assert blur_03 > 5e-3
+    assert ebm.eval.frechet_distance(moons_a, blurred) < 0.2  # FD is nearly blind here
+
+
 def test_two_moons_labels():
     x, y = ebm.datasets.two_moons(200, return_labels=True)
     assert x.shape == (200, 2) and y.shape == (200,)
