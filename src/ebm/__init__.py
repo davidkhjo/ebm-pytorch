@@ -33,7 +33,7 @@ from ebm.samplers import (
 from ebm.training import Trainer
 from ebm.utils import EMA
 
-__version__ = "0.5.1"
+__version__ = "0.5.2"
 
 __all__ = [
     "EnergyFn",

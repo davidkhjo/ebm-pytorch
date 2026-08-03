@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.2 — 2026-08-03
+
+- `eval.mmd`: unbiased squared maximum mean discrepancy (RBF kernel, median
+  heuristic or explicit bandwidth) — catches distribution mismatch that
+  `frechet_distance`'s two moments miss.
+- Benchmarks page (`docs/benchmarks.md` + `examples/benchmark_losses.py`):
+  all six training methods on two-moons, scored by FD, MMD, AIS-bracketed
+  test log-likelihood, and wall time.
+
 ## 0.5.1 — 2026-08-03
 
 - Documentation site at https://dkjo8.github.io/ebm-pytorch/ (mkdocs-material +

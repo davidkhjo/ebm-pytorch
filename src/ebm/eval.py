@@ -17,6 +17,7 @@ from ebm.energy import EnergyFn
 __all__ = [
     "energies",
     "frechet_distance",
+    "mmd",
     "ood_auroc",
     "ais_log_z",
     "reverse_ais_log_z",
@@ -74,6 +75,36 @@ def frechet_distance(
 
     fd = ((mu_x - mu_y) ** 2).sum() + cov_x.trace() + cov_y.trace() - 2 * tr_sqrt
     return float(fd.clamp_min(0))
+
+
+@torch.no_grad()
+def mmd(x: Tensor, y: Tensor, *, bandwidth: float | None = None) -> float:
+    """Unbiased squared maximum mean discrepancy with an RBF kernel.
+
+    ``MMD²(p, q) = E k(x,x') + E k(y,y') - 2 E k(x,y)`` — 0 iff the
+    distributions match (for a characteristic kernel), and unlike
+    `frechet_distance` it sees *all* moments: a blurred version of the data
+    matches mean and covariance almost perfectly but not MMD. The unbiased
+    estimator can come out slightly negative near zero.
+
+    Samples are flattened and compared in float64. ``bandwidth=None`` uses the
+    median heuristic (median pairwise distance across the pooled sample).
+    Cost is O((n+m)²) in memory and time — a couple thousand samples per side
+    is plenty.
+    """
+    fx = x.reshape(len(x), -1).cpu().double()
+    fy = y.reshape(len(y), -1).cpu().double()
+    d2 = torch.cdist(torch.cat([fx, fy]), torch.cat([fx, fy])).pow(2)
+    if bandwidth is None:
+        off_diag = d2[~torch.eye(len(d2), dtype=torch.bool)]
+        bandwidth = off_diag.sqrt().median().item()
+    k = torch.exp(-d2 / (2 * bandwidth**2))
+
+    n, m = len(fx), len(fy)
+    k_xx = (k[:n, :n].sum() - k[:n, :n].diagonal().sum()) / (n * (n - 1))
+    k_yy = (k[n:, n:].sum() - k[n:, n:].diagonal().sum()) / (m * (m - 1))
+    k_xy = k[:n, n:].mean()
+    return float(k_xx + k_yy - 2 * k_xy)
 
 
 def ood_auroc(energy: EnergyFn, x_in: Tensor, x_out: Tensor) -> float:
