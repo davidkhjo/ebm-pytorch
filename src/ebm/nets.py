@@ -97,8 +97,9 @@ class NoiseConditionalMLPEnergy(nn.Module):
 class NoiseConditionalConvEnergy(nn.Module):
     """Noise-conditional CNN energy ``(x: (B, C, H, W), sigma: (B,)) -> (B,)``.
 
-    The sigma embedding enters as a per-channel bias after the first
-    convolution (FiLM-style, bias only).
+    The sigma embedding modulates every block with FiLM (per-channel scale and
+    bias) — bias-only conditioning is too weak when the noise ladder spans a
+    wide variance range, as in recovery-likelihood training.
     """
 
     def __init__(
@@ -106,29 +107,34 @@ class NoiseConditionalConvEnergy(nn.Module):
         in_channels: int = 3,
         channels: Sequence[int] = (64, 128, 256, 256),
         embed_dim: int = 32,
-        spectral_norm: bool = True,
+        spectral_norm: bool = False,
     ):
         super().__init__()
         self.embed = _GaussianFourierFeatures(embed_dim)
-        self.embed_proj = nn.Linear(embed_dim, channels[0])
-        self.stem = _maybe_sn(
-            nn.Conv2d(in_channels, channels[0], kernel_size=3, stride=2, padding=1), spectral_norm
-        )
-        layers: list[nn.Module] = [nn.SiLU()]
-        c_in = channels[0]
-        for c_out in channels[1:]:
+        self.convs = nn.ModuleList()
+        self.films = nn.ModuleList()
+        c_in = in_channels
+        for c_out in channels:
             conv = nn.Conv2d(c_in, c_out, kernel_size=3, stride=2, padding=1)
-            layers += [_maybe_sn(conv, spectral_norm), nn.SiLU()]
+            self.convs.append(_maybe_sn(conv, spectral_norm))
+            film = nn.Linear(embed_dim, 2 * c_out)
+            nn.init.zeros_(film.weight)
+            nn.init.zeros_(film.bias)
+            self.films.append(film)
             c_in = c_out
-        self.body = nn.Sequential(*layers)
+        self.act = nn.SiLU()
         self.head = _maybe_sn(nn.Linear(c_in, 1), spectral_norm)
 
     def forward(self, x: Tensor, sigma) -> Tensor:
         sigma = _as_batch_sigma(sigma, x)
-        bias = self.embed_proj(self.embed(sigma))
-        h = self.stem(x) + bias[:, :, None, None]
-        h = self.body(h).mean(dim=(2, 3))
-        return self.head(h).squeeze(-1)
+        emb = self.embed(sigma)
+        h = x
+        for conv, film in zip(self.convs, self.films, strict=True):
+            h = conv(h)
+            scale, bias = film(emb).chunk(2, dim=-1)
+            h = h * (1 + scale[:, :, None, None]) + bias[:, :, None, None]
+            h = self.act(h)
+        return self.head(h.mean(dim=(2, 3))).squeeze(-1)
 
 
 class ConvEnergy(nn.Module):

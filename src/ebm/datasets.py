@@ -1,12 +1,16 @@
-"""Standard 2D toy distributions for developing and testing EBMs.
+"""Datasets: 2D toy distributions plus a torchvision-free MNIST loader.
 
-All functions return a float32 tensor of shape ``(n, 2)``, roughly centered
-and on a scale of a few units, with an optional ``generator`` for determinism.
+The 2D functions return a float32 tensor of shape ``(n, 2)``, roughly
+centered and on a scale of a few units, with an optional ``generator`` for
+determinism. `mnist` downloads and parses the raw IDX files directly.
 """
 
 from __future__ import annotations
 
+import gzip
 import math
+import urllib.request
+from pathlib import Path
 
 import torch
 from torch import Tensor
@@ -32,6 +36,55 @@ def two_moons(
     x = x[perm].float()
     if return_labels:
         return x, y[perm]
+    return x
+
+
+_MNIST_MIRROR = "https://ossci-datasets.s3.amazonaws.com/mnist/"
+
+
+def _parse_idx(raw: bytes) -> Tensor:
+    """Parse an IDX-format buffer (the raw MNIST file format) into a uint8 tensor."""
+    if raw[:2] != b"\x00\x00" or raw[2] != 0x08:
+        raise ValueError("not an unsigned-byte IDX buffer")
+    n_dims = raw[3]
+    shape = [int.from_bytes(raw[4 + 4 * i : 8 + 4 * i], "big") for i in range(n_dims)]
+    offset = 4 + 4 * n_dims
+    data = torch.frombuffer(bytearray(raw[offset:]), dtype=torch.uint8)
+    return data.reshape(shape)
+
+
+def mnist(
+    root: str | Path | None = None,
+    train: bool = True,
+    return_labels: bool = False,
+) -> Tensor | tuple[Tensor, Tensor]:
+    """MNIST digits as ``(N, 1, 28, 28)`` float32 in ``[-1, 1]`` — no torchvision.
+
+    Downloads the raw IDX files (~11 MB) on first use into ``root`` (default
+    ``~/.cache/ebm-pytorch``) and parses them directly. The ``[-1, 1]`` range
+    pairs with ``LangevinDynamics(clamp=(-1, 1))`` and the image-EBM recipes.
+
+    Args:
+        root: Cache directory.
+        train: Training split (60k) or test split (10k).
+        return_labels: Also return ``(N,)`` int64 labels.
+    """
+    root = Path(root).expanduser() if root is not None else Path.home() / ".cache" / "ebm-pytorch"
+    root.mkdir(parents=True, exist_ok=True)
+    prefix = "train" if train else "t10k"
+
+    tensors = []
+    for kind in ("images-idx3", "labels-idx1"):
+        name = f"{prefix}-{kind}-ubyte.gz"
+        path = root / name
+        if not path.exists():
+            urllib.request.urlretrieve(_MNIST_MIRROR + name, path)  # noqa: S310
+        tensors.append(_parse_idx(gzip.decompress(path.read_bytes())))
+
+    images, labels = tensors
+    x = images.unsqueeze(1).float() / 127.5 - 1.0
+    if return_labels:
+        return x, labels.long()
     return x
 
 

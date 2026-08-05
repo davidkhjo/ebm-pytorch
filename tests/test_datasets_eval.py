@@ -81,6 +81,28 @@ def test_frechet_distance_feature_fn_and_shapes():
     assert proj > 0
 
 
+def test_idx_parser_roundtrip():
+    from ebm.datasets import _parse_idx
+
+    # Hand-built IDX: magic 0x00000803 (uint8, 3 dims), shape (2, 3, 4).
+    payload = bytes(range(24))
+    raw = b"\x00\x00\x08\x03" + (2).to_bytes(4, "big") + (3).to_bytes(4, "big")
+    raw += (4).to_bytes(4, "big") + payload
+    t = _parse_idx(raw)
+    assert t.shape == (2, 3, 4)
+    assert t.dtype == torch.uint8
+    assert t.flatten().tolist() == list(range(24))
+
+    # 1-D labels variant.
+    labels = _parse_idx(b"\x00\x00\x08\x01" + (5).to_bytes(4, "big") + bytes([7, 2, 1, 0, 4]))
+    assert labels.tolist() == [7, 2, 1, 0, 4]
+
+    import pytest
+
+    with pytest.raises(ValueError):
+        _parse_idx(b"\x00\x00\x0d\x01" + (1).to_bytes(4, "big") + b"\x00")
+
+
 def test_mmd_zero_for_same_distribution_positive_for_blur():
     g = torch.Generator().manual_seed(2)
     moons_a = ebm.datasets.two_moons(1500, generator=g)
