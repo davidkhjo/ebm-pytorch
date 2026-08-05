@@ -63,6 +63,16 @@ loss_fn = ebm.DiffusionRecoveryLikelihood(sigmas, mcmc_steps=30)
 samples = ebm.drl_sample(net, sigmas, 2000, (2,))
 ```
 
+!!! note "Stable training ≠ cheap generation"
+    DRL's negatives start at the tether point — always *near data* — which is
+    exactly what makes training stable, but it means the generation path from
+    pure noise down the ladder is never exercised during training. On small
+    budgets the trained energy denoises poorly from far off-manifold and
+    `drl_sample` output stays noisy; reaching paper-quality generation takes
+    paper-scale budgets (large nets, 100k+ steps). For a small-budget image
+    demo, use the short-run CD recipe instead (see the MNIST example) — there
+    the training process *is* the generator.
+
 ## Score matching
 
 No negatives, no MCMC — match \(\nabla_x \log p\) instead. `DenoisingScoreMatching(sigma)`

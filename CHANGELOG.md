@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.6.0 — 2026-08-05
+
+- `datasets.mnist`: MNIST as `(N, 1, 28, 28)` float32 in `[-1, 1]` with no
+  torchvision dependency (downloads and parses the raw IDX files; cached in
+  `~/.cache/ebm-pytorch`).
+- New example: `examples/train_mnist.py` — the IGEBM short-run recipe
+  generating digits in ~5 minutes on Apple Silicon.
+- `NoiseConditionalConvEnergy`: sigma now modulates every block via FiLM
+  (scale + bias, zero-initialized) instead of a bias after the stem only, and
+  `spectral_norm` defaults to `False` — bias-only conditioning and capped
+  gradients were too weak for recovery-likelihood training. Docs now explain
+  when DRL's generation path needs large budgets and when to prefer the
+  short-run CD recipe.
+
 ## 0.5.2 — 2026-08-03
 
 - `eval.mmd`: unbiased squared maximum mean discrepancy (RBF kernel, median
