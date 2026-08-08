@@ -37,8 +37,8 @@ dev = ["pytest>=8.0", "ruff>=0.4", "matplotlib>=3.7"]
 docs = ["mkdocs-material>=9", "mkdocstrings[python]>=0.24"]
 
 [project.urls]
-Homepage = "https://github.com/dkjo8/ebm-pytorch"
-Documentation = "https://dkjo8.github.io/ebm-pytorch/"
+Homepage = "https://github.com/davidkhjo/ebm-pytorch"
+Documentation = "https://davidkhjo.github.io/ebm-pytorch/"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ebm"]
