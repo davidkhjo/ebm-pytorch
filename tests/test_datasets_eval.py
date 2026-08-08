@@ -103,6 +103,31 @@ def test_idx_parser_roundtrip():
         _parse_idx(b"\x00\x00\x0d\x01" + (1).to_bytes(4, "big") + b"\x00")
 
 
+def test_mnist_like_loaders_offline(tmp_path):
+    # Pre-populate the cache with tiny hand-built IDX files: the loaders must
+    # parse and scale them without touching the network.
+    import gzip
+
+    def idx_images(n):
+        raw = b"\x00\x00\x08\x03" + b"".join(d.to_bytes(4, "big") for d in (n, 28, 28))
+        return gzip.compress(raw + bytes((i * 37) % 256 for i in range(n * 28 * 28)))
+
+    def idx_labels(values):
+        raw = b"\x00\x00\x08\x01" + len(values).to_bytes(4, "big") + bytes(values)
+        return gzip.compress(raw)
+
+    for prefix in ("", "fashion-"):
+        (tmp_path / f"{prefix}train-images-idx3-ubyte.gz").write_bytes(idx_images(3))
+        (tmp_path / f"{prefix}train-labels-idx1-ubyte.gz").write_bytes(idx_labels([5, 0, 9]))
+
+    for loader in (ebm.datasets.mnist, ebm.datasets.fashion_mnist):
+        x, y = loader(root=tmp_path, return_labels=True)
+        assert x.shape == (3, 1, 28, 28) and x.dtype == torch.float32
+        assert x.min() >= -1 and x.max() <= 1
+        assert y.tolist() == [5, 0, 9] and y.dtype == torch.int64
+        assert torch.equal(loader(root=tmp_path), x)
+
+
 def test_mmd_zero_for_same_distribution_positive_for_blur():
     g = torch.Generator().manual_seed(2)
     moons_a = ebm.datasets.two_moons(1500, generator=g)

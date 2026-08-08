@@ -2,7 +2,8 @@
 
 The 2D functions return a float32 tensor of shape ``(n, 2)``, roughly
 centered and on a scale of a few units, with an optional ``generator`` for
-determinism. `mnist` downloads and parses the raw IDX files directly.
+determinism. `mnist` and `fashion_mnist` download and parse the raw IDX
+files directly.
 """
 
 from __future__ import annotations
@@ -40,6 +41,7 @@ def two_moons(
 
 
 _MNIST_MIRROR = "https://ossci-datasets.s3.amazonaws.com/mnist/"
+_FASHION_MIRROR = "https://github.com/zalandoresearch/fashion-mnist/raw/master/data/fashion/"
 
 
 def _parse_idx(raw: bytes) -> Tensor:
@@ -51,6 +53,32 @@ def _parse_idx(raw: bytes) -> Tensor:
     offset = 4 + 4 * n_dims
     data = torch.frombuffer(bytearray(raw[offset:]), dtype=torch.uint8)
     return data.reshape(shape)
+
+
+def _load_mnist_like(
+    mirror: str,
+    cache_prefix: str,
+    root: str | Path | None,
+    train: bool,
+    return_labels: bool,
+) -> Tensor | tuple[Tensor, Tensor]:
+    root = Path(root).expanduser() if root is not None else Path.home() / ".cache" / "ebm-pytorch"
+    root.mkdir(parents=True, exist_ok=True)
+    prefix = "train" if train else "t10k"
+
+    tensors = []
+    for kind in ("images-idx3", "labels-idx1"):
+        name = f"{prefix}-{kind}-ubyte.gz"
+        path = root / (cache_prefix + name)
+        if not path.exists():
+            urllib.request.urlretrieve(mirror + name, path)  # noqa: S310
+        tensors.append(_parse_idx(gzip.decompress(path.read_bytes())))
+
+    images, labels = tensors
+    x = images.unsqueeze(1).float() / 127.5 - 1.0
+    if return_labels:
+        return x, labels.long()
+    return x
 
 
 def mnist(
@@ -69,23 +97,22 @@ def mnist(
         train: Training split (60k) or test split (10k).
         return_labels: Also return ``(N,)`` int64 labels.
     """
-    root = Path(root).expanduser() if root is not None else Path.home() / ".cache" / "ebm-pytorch"
-    root.mkdir(parents=True, exist_ok=True)
-    prefix = "train" if train else "t10k"
+    return _load_mnist_like(_MNIST_MIRROR, "", root, train, return_labels)
 
-    tensors = []
-    for kind in ("images-idx3", "labels-idx1"):
-        name = f"{prefix}-{kind}-ubyte.gz"
-        path = root / name
-        if not path.exists():
-            urllib.request.urlretrieve(_MNIST_MIRROR + name, path)  # noqa: S310
-        tensors.append(_parse_idx(gzip.decompress(path.read_bytes())))
 
-    images, labels = tensors
-    x = images.unsqueeze(1).float() / 127.5 - 1.0
-    if return_labels:
-        return x, labels.long()
-    return x
+def fashion_mnist(
+    root: str | Path | None = None,
+    train: bool = True,
+    return_labels: bool = False,
+) -> Tensor | tuple[Tensor, Tensor]:
+    """Fashion-MNIST as ``(N, 1, 28, 28)`` float32 in ``[-1, 1]``.
+
+    Same IDX format, shapes, and scaling as `mnist` (cached alongside it with a
+    ``fashion-`` prefix). Its classic role in the EBM literature is as the
+    out-of-distribution counterpart to MNIST when evaluating a hybrid model's
+    ``eval.ood_auroc`` (Grathwohl et al., 2020).
+    """
+    return _load_mnist_like(_FASHION_MIRROR, "fashion-", root, train, return_labels)
 
 
 def eight_gaussians(n: int, std: float = 0.15, generator: torch.Generator | None = None) -> Tensor:

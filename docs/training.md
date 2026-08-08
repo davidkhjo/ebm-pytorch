@@ -101,3 +101,10 @@ loss_fn = ebm.JEMLoss(ebm.ContrastiveDivergence(sampler), cd_weight=1.0)
 trainer.fit((X, Y), ...)                           # supervised batches
 samples_of_class_3 = sampler.sample(clf.condition(3), x0)
 ```
+
+If class-conditional generation is the point, set
+`JEMLoss(..., conditional_negatives=True)` so each negative chain targets a
+random class's joint energy — otherwise `condition(k)` samples a logit whose
+off-manifold shape CD never trained, which beyond toy data yields adversarial
+textures rather than class samples (see the
+[MNIST JEM example](examples.md#jem-at-image-scale-classify-detect-ood-and-draw-digits)).
