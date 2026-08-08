@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.7.0 — 2026-08-07
+
+- `nets.ConvClassifier`: the `ConvEnergy` trunk with a position-sensitive
+  (flattened, not pooled) K-logit head, so `ClassifierEnergy` (JEM) works on
+  images out of the box. Pooled logits are translation-invariant "bags of
+  class evidence", and conditional sampling on them tiles the canvas with
+  class strokes instead of drawing one centered object.
+- `JEMLoss(conditional_negatives=True)`: negative chains target a uniformly
+  random class's joint energy `E(x, y)` (as in the JEM reference
+  implementation) while the loss terms stay marginal. Without it,
+  class-conditional generation at image scale produces adversarial textures —
+  sampling a logit that CD never trained.
+- `datasets.fashion_mnist`: Fashion-MNIST with the same format and scaling as
+  `mnist` — the classic out-of-distribution counterpart for evaluating hybrid
+  models with `eval.ood_auroc`.
+- New example: `examples/train_mnist_jem.py` — one MNIST network that
+  classifies, flags Fashion-MNIST as OOD by energy, and draws digits of a
+  requested class, using the same IGEBM sampler constants as the
+  unconditional example.
+
 ## 0.6.0 — 2026-08-05
 
 - `datasets.mnist`: MNIST as `(N, 1, 28, 28)` float32 in `[-1, 1]` with no

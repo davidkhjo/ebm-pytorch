@@ -137,6 +137,45 @@ class NoiseConditionalConvEnergy(nn.Module):
         return self.head(h.mean(dim=(2, 3))).squeeze(-1)
 
 
+class ConvClassifier(nn.Module):
+    """Small strided CNN classifier ``(B, C, H, W) -> (B, K)`` for image JEM.
+
+    The same trunk as `ConvEnergy` with a flattened (position-sensitive)
+    K-logit head — wrap it in ``ebm.ClassifierEnergy`` to get the marginal
+    energy ``E(x) = -logsumexp(logits)`` and class-conditional energies. No
+    batch normalization, so per-sample energies and MCMC stay well-defined.
+
+    The head is deliberately *not* pooled: a mean-pooled logit is a
+    translation-invariant "bag of class evidence", and minimizing that
+    conditional energy prefers a canvas tiled with class-typical strokes over
+    a single centered digit. ``image_size`` fixes the flattened dimension.
+    """
+
+    def __init__(
+        self,
+        num_classes: int,
+        in_channels: int = 3,
+        image_size: int = 32,
+        channels: Sequence[int] = (64, 128, 256, 256),
+        spectral_norm: bool = False,
+    ):
+        super().__init__()
+        layers: list[nn.Module] = []
+        c_in = in_channels
+        size = image_size
+        for c_out in channels:
+            conv = nn.Conv2d(c_in, c_out, kernel_size=3, stride=2, padding=1)
+            layers += [_maybe_sn(conv, spectral_norm), nn.SiLU()]
+            c_in = c_out
+            size = (size + 1) // 2
+        self.features = nn.Sequential(*layers)
+        self.head = _maybe_sn(nn.Linear(c_in * size * size, num_classes), spectral_norm)
+
+    def forward(self, x: Tensor) -> Tensor:
+        h = self.features(x)
+        return self.head(h.flatten(1))
+
+
 class ConvEnergy(nn.Module):
     """Small strided CNN energy function for image data: ``(B, C, H, W) -> (B,)``.
 

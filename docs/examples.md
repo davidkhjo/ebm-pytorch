@@ -1,7 +1,7 @@
 # Examples
 
-Both examples live in [`examples/`](https://github.com/dkjo8/ebm-pytorch/tree/main/examples)
-and run on CPU in a few minutes.
+The examples live in [`examples/`](https://github.com/dkjo8/ebm-pytorch/tree/main/examples);
+the 2D ones run on CPU in a few minutes, the MNIST ones want MPS/CUDA.
 
 ## Two moons with persistent CD
 
@@ -73,3 +73,42 @@ Short-run EBMs train the *exact* process used for generation (noise → data in
 tether point near data — its generation path from pure noise is never
 exercised during training and only becomes reliable at paper-scale budgets.
 See the note in [Training methods](training.md).
+
+## JEM at image scale: classify, detect OOD, and draw digits
+
+`examples/train_mnist_jem.py` — the previous two recipes combined: a
+`ConvClassifier` wrapped in `ClassifierEnergy` and trained with `JEMLoss`
+using the exact IGEBM sampler constants above. One network then does three
+jobs — classifies test digits (~95% accuracy), flags Fashion-MNIST images as
+out-of-distribution by their energy (~0.99 AUROC — the headline JEM
+capability; `ebm.datasets.fashion_mnist` is the classic OOD counterpart from
+Grathwohl et al., 2020), and draws digits of a *requested* class:
+
+![JEM MNIST result](assets/mnist_jem_result.png)
+
+Read the figure honestly: classification and OOD are strong at this budget,
+and each row (one class) is visibly distinct — the conditional signal works —
+but the samples themselves stay rough. Crisp digit *generation* is the
+expensive part, the same budget lesson as the unconditional example above.
+
+```python
+energy = ebm.ClassifierEnergy(
+    ebm.nets.ConvClassifier(num_classes=10, in_channels=1, image_size=28, channels=(32, 64, 128))
+)
+loss_fn = ebm.JEMLoss(
+    ebm.ContrastiveDivergence(sampler, buffer=buffer, energy_reg=1.0),
+    conditional_negatives=True,   # sample negatives per random class, JEM-style
+)
+trainer.fit((x, y), steps=8000, batch_size=128)          # supervised batches
+
+sevens = sampler.sample(energy.condition(7), noise, steps=300)   # row-on-demand
+auroc = ebm.eval.ood_auroc(energy, mnist_test, fashion_test)     # energy as OOD score
+```
+
+`conditional_negatives=True` matters at image scale: with plain marginal CD,
+sampling a single logit at generation time explores directions CD never
+trained, and `condition(k)` produces adversarial-looking textures instead of
+digits — a classifier's individual logits are easy to push up off-manifold.
+Steering each training chain by a random class (as the JEM reference code
+does) trains exactly the per-class paths that conditional generation uses.
+The loss terms stay marginal, so nothing else changes.
