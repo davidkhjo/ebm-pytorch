@@ -1,8 +1,8 @@
 site_name: ebm-pytorch
 site_description: A small, reliable PyTorch library for training and using energy-based models.
-site_url: https://dkjo8.github.io/ebm-pytorch/
-repo_url: https://github.com/dkjo8/ebm-pytorch
-repo_name: dkjo8/ebm-pytorch
+site_url: https://davidkhjo.github.io/ebm-pytorch/
+repo_url: https://github.com/davidkhjo/ebm-pytorch
+repo_name: davidkhjo/ebm-pytorch
 
 theme:
   name: material
