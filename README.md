@@ -51,7 +51,7 @@ for step in range(3000):
 
 | Piece | Contents |
 |---|---|
-| **Energies** | any callable `(B, *shape) -> (B,)`; `EnergyModel` wrapper, `ebm.score`, `nets.MLPEnergy` / `nets.ConvEnergy` / `nets.ConvClassifier` (SiLU, optional spectral norm, no batch norm), `nets.IsingEnergy` (discrete 2D lattice); noise-conditional variants for NCSN |
+| **Energies** | any callable `(B, *shape) -> (B,)`; `EnergyModel` wrapper, `ebm.score`, `nets.MLPEnergy` / `nets.ConvEnergy` / `nets.ConvClassifier` (SiLU, optional spectral norm, no batch norm), `nets.IsingEnergy` / `nets.PottsEnergy` (discrete 2D lattices); noise-conditional variants for NCSN |
 | **Samplers** | `LangevinDynamics` (ULA/SGLD with decoupled step/noise, gradient clipping, sample clamping), `MALA`, `HMC`, `GibbsWithGradients` (binary) + `CategoricalGibbsWithGradients` (one-hot), `AnnealedLangevinDynamics` (noise ladder) |
 | **Losses** | `ContrastiveDivergence` (CD-k / persistent CD via `ReplayBuffer`), `DiffusionRecoveryLikelihood` + `drl_sample` (recovery likelihood on a noise ladder — the most stable EBM training known), `DenoisingScoreMatching` + `MultiSigmaDenoisingScoreMatching` (NCSN), `SlicedScoreMatching` (VR variant), `NoiseContrastiveEstimation` (learnable `log_z`), `JEMLoss` (classifier + EBM) |
 | **JEM** | `ClassifierEnergy`: any K-class classifier as an EBM (`E(x) = -logsumexp logits`), class-conditional sampling via `.condition(y)` |
@@ -69,7 +69,8 @@ figures in the [examples gallery](https://davidkhjo.github.io/ebm-pytorch/exampl
 - `train_jem.py` / `train_mnist_jem.py` — classify, generate, and detect OOD with one network
 - `train_mnist.py` — the image-scale IGEBM short-run recipe
 - `train_composition.py` — product of experts / mixture / tempering, composed without retraining
-- `train_ising.py` — a discrete 2D Ising lattice sampled with Gibbs-with-Gradients
+- `train_ising.py` / `train_potts.py` — discrete 2D lattices sampled with (categorical) Gibbs-with-Gradients
+- `train_ncsn.py` — score-based generation: multi-sigma denoising + annealed Langevin
 - `checkpoint_resume.py` — save a run and resume it in a fresh process
 - `benchmark_losses.py` — every loss family scored on the evaluation stack
 

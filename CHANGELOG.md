@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.10.0 — 2026-08-09
 
 - `nets.PottsEnergy`: the K-color generalization of `IsingEnergy` — a 2D
   nearest-neighbor Potts energy `E(x) = -J Σ 1[c_i = c_j]` for one-hot
