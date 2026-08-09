@@ -173,3 +173,28 @@ x0 = torch.nn.functional.one_hot(torch.randint(5, (1, 40, 40)), 5).float()
 x = ebm.CategoricalGibbsWithGradients(steps=4000).sample(energy, x0)
 colors = x.argmax(-1)                                     # (1, 40, 40) category ids
 ```
+
+## Score-based generation with NCSN
+
+`examples/train_ncsn.py` — a standalone tour of the noise-conditional stack
+(Song & Ermon, 2019). A `NoiseConditionalMLPEnergy` is trained with
+`MultiSigmaDenoisingScoreMatching` over a geometric σ ladder — no MCMC, no
+negatives — and sampled with `AnnealedLangevinDynamics`, running Langevin down
+the ladder from the largest σ to the smallest:
+
+![NCSN result](assets/ncsn_result.png)
+
+```python
+sigmas = ebm.geometric_sigmas(2.0, 0.02, 20)
+net = ebm.nets.NoiseConditionalMLPEnergy(dim=2)
+ebm.Trainer(net, ebm.MultiSigmaDenoisingScoreMatching(sigmas)).fit(data, steps=8000)
+
+sampler = ebm.AnnealedLangevinDynamics(sigmas, step_size=4e-3, steps_per_sigma=200)
+samples = sampler.sample(net, torch.randn(2000, 2))
+```
+
+The middle panel is the learned score `−∇E(x, σ_min)` pointing back toward the
+data. On the eight-Gaussians target the annealed sampler **covers all eight
+modes** (density concentrating at each), where plain single-σ Langevin tends to
+collapse onto only a few — annealing from a near-Gaussian large-σ landscape is
+what lets chains cross the low-density gaps between modes.
