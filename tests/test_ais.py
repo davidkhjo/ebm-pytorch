@@ -20,6 +20,20 @@ def test_ais_recovers_gaussian_log_z():
     assert (result.samples.std() - 1.0).abs().item() < 0.15
 
 
+def test_ais_ess_equals_n_chains_when_target_matches_base():
+    # If the target energy equals the base's negative log-density, every
+    # incremental weight is exactly 0, so all importance weights are equal and
+    # the effective sample size hits its ceiling n_chains exactly (stderr 0).
+    base = torch.distributions.Independent(
+        torch.distributions.Normal(torch.zeros(2), torch.ones(2)), 1
+    )
+    n_chains = 32
+    result = ais_log_z(lambda x: -base.log_prob(x), (2,), base=base, n_temps=10, n_chains=n_chains)
+    assert result.ess == n_chains
+    assert result.stderr == 0.0
+    assert abs(result.log_z) < 1e-6  # log Z of a normalized density is 0
+
+
 def test_ais_error_decreases_with_more_temps():
     few = ais_log_z(quadratic_energy, (2,), base_scale=2.0, n_temps=3, n_chains=256)
     many = ais_log_z(quadratic_energy, (2,), base_scale=2.0, n_temps=40, n_chains=256)
