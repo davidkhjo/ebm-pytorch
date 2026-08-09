@@ -220,6 +220,35 @@ def test_mmd_zero_for_same_distribution_positive_for_blur():
     assert ebm.eval.frechet_distance(moons_a, blurred) < 0.2  # FD is nearly blind here
 
 
+def test_mmd_and_frechet_reject_degenerate_inputs():
+    import pytest
+
+    g = torch.Generator().manual_seed(3)
+    a = torch.randn(4, 2, generator=g)
+
+    # Fewer than 2 samples: the unbiased MMD denominator n(n-1) and the
+    # single-sample covariance are undefined — raise instead of returning NaN.
+    with pytest.raises(ValueError):
+        ebm.eval.mmd(a[:1], a)
+    with pytest.raises(ValueError):
+        ebm.eval.mmd(a, a[:1])
+    with pytest.raises(ValueError):
+        ebm.eval.frechet_distance(a[:1], a[:1])
+
+    # Zero RBF bandwidth: the median pairwise distance vanishes when the pooled
+    # samples are identical, which would divide by zero in the kernel.
+    identical = torch.ones(5, 2)
+    with pytest.raises(ValueError):
+        ebm.eval.mmd(identical, identical.clone())  # median heuristic -> 0
+    with pytest.raises(ValueError):
+        ebm.eval.mmd(a, a.clone(), bandwidth=0.0)
+
+    # The 2-sample minimum still computes a finite value (positive control).
+    val = ebm.eval.mmd(a[:2], a[2:], bandwidth=1.0)
+    assert math.isfinite(val)
+    assert math.isfinite(ebm.eval.frechet_distance(a[:2], a[2:]))
+
+
 def test_two_moons_labels():
     x, y = ebm.datasets.two_moons(200, return_labels=True)
     assert x.shape == (200, 2) and y.shape == (200,)
