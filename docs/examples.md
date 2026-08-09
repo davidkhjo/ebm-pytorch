@@ -112,3 +112,24 @@ digits — a classifier's individual logits are easy to push up off-manifold.
 Steering each training chain by a random class (as the JEM reference code
 does) trains exactly the per-class paths that conditional generation uses.
 The loss terms stay marginal, so nothing else changes.
+
+## Composing energies: product, mixture, tempering
+
+`examples/train_composition.py` — trains two experts on crossing stripes (one
+horizontal, one vertical), then combines them *without retraining*. Because
+`p(x) ∝ exp(-E(x))`, arithmetic on energies is arithmetic on densities, and
+every composition is itself an energy the same `LangevinDynamics` can sample:
+
+![Composition result](assets/composition_result.png)
+
+```python
+product = ebm.SumEnergy(expert_h, expert_v)         # p_H · p_V  -> intersection
+mixture = ebm.MixtureEnergy(expert_h, expert_v)     # p_H + p_V  -> union
+sharp   = ebm.TemperedEnergy(mixture, temperature=0.25)   # sharpen the union
+samples = ebm.LangevinDynamics(step_size=0.01, steps=500).sample(product, noise)
+```
+
+The product concentrates mass where **both** experts agree (the blob where the
+stripes cross); the mixture covers **either** (the full plus-shape); tempering
+sharpens toward the highest-density overlap. See [Composing energies](composition.md)
+for the full algebra.
