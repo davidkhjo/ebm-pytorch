@@ -109,6 +109,40 @@ class LinearBernoulliEnergy(nn.Module):
         return -(x * self.theta).sum(dim=1)
 
 
+def test_ising_energy_orders_with_coupling():
+    torch.manual_seed(0)
+
+    def agreement(coupling):
+        # Sample a 12x12 lattice via GWG and measure the fraction of neighbor
+        # pairs that align. Ferromagnetic coupling should order the lattice.
+        energy = ebm.nets.IsingEnergy(coupling=coupling)
+        x0 = bernoulli_init((16, 12, 12))
+        x = ebm.GibbsWithGradients(steps=400).sample(energy, x0)
+        s = 2 * x - 1
+        right = (s[:, :, :-1] == s[:, :, 1:]).float().mean()
+        down = (s[:, :-1, :] == s[:, 1:, :]).float().mean()
+        return 0.5 * (right + down).item()
+
+    disordered = agreement(0.05)
+    ordered = agreement(1.0)
+    # Output stays binary and same-shaped is covered by the sampler; here we
+    # only assert the physics: stronger coupling => more neighbor agreement.
+    assert ordered > disordered
+    assert ordered > 0.8  # strong ferromagnet is nearly aligned
+
+
+def test_ising_energy_shape_and_learnable_coupling():
+    x = bernoulli_init((5, 8, 8))
+    fixed = ebm.nets.IsingEnergy(coupling=0.7)
+    assert fixed(x).shape == (5,)
+    assert not any(p.requires_grad for p in fixed.parameters())  # buffer, not param
+
+    learn = ebm.nets.IsingEnergy(coupling=0.3, learn_coupling=True)
+    e = learn(x).sum()
+    e.backward()
+    assert learn.coupling.grad is not None  # gradient flows to J
+
+
 def test_cd_gwg_trains_bernoulli_ebm():
     true_theta = torch.tensor([1.5, -1.0, 0.0, 0.5])
     data = torch.bernoulli(torch.sigmoid(true_theta).expand(2000, 4))

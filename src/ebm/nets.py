@@ -203,3 +203,33 @@ class ConvEnergy(nn.Module):
         h = self.features(x)
         h = h.mean(dim=(2, 3))
         return self.head(h).squeeze(-1)
+
+
+class IsingEnergy(nn.Module):
+    """2D nearest-neighbor Ising lattice energy for binary data ``(B, H, W) -> (B,)``.
+
+    Maps a ``{0, 1}`` lattice to spins ``s = 2x - 1`` and returns the
+    ferromagnetic coupling energy ``E(x) = -J Σ_⟨i,j⟩ s_i s_j`` over right and
+    down neighbors. Larger ``coupling`` ``J`` favors aligned neighbors, so
+    low-energy states form ordered domains. The energy is differentiable in the
+    float-relaxed input, which is exactly what `GibbsWithGradients` needs, and
+    it carries no per-pixel parameters — the one scalar ``coupling`` is a
+    learnable `nn.Parameter` when ``learn_coupling=True`` (recover ``J`` from
+    data by contrastive divergence) and a fixed buffer otherwise.
+    """
+
+    def __init__(self, coupling: float = 0.5, learn_coupling: bool = False):
+        super().__init__()
+        j = torch.tensor(float(coupling))
+        if learn_coupling:
+            self.coupling = nn.Parameter(j)
+        else:
+            self.register_buffer("coupling", j)
+
+    def forward(self, x: Tensor) -> Tensor:
+        if x.dim() != 3:
+            raise ValueError(f"expected (B, H, W) binary lattice, got {tuple(x.shape)}")
+        s = 2 * x - 1
+        right = (s[:, :, :-1] * s[:, :, 1:]).sum(dim=(1, 2))
+        down = (s[:, :-1, :] * s[:, 1:, :]).sum(dim=(1, 2))
+        return -self.coupling * (right + down)

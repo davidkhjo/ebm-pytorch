@@ -133,3 +133,25 @@ The product concentrates mass where **both** experts agree (the blob where the
 stripes cross); the mixture covers **either** (the full plus-shape); tempering
 sharpens toward the highest-density overlap. See [Composing energies](composition.md)
 for the full algebra.
+
+## Discrete EBMs: a 2D Ising lattice
+
+`examples/train_ising.py` — the library's *discrete* side. `GibbsWithGradients`
+is an exact Metropolis-Hastings sampler for binary data `x ∈ {0,1}^D`, and
+`nets.IsingEnergy` is a 2D nearest-neighbor lattice energy
+`E(x) = -J Σ_⟨i,j⟩ s_i s_j` (spins `s = 2x − 1`). Starting from a random binary
+lattice and running the sampler at three coupling strengths reproduces the
+ferromagnetic phase behavior — disorder at weak coupling, large aligned domains
+at strong coupling (neighbor agreement 0.55 → 0.73 → 0.91):
+
+![Ising result](assets/ising_result.png)
+
+```python
+energy = ebm.nets.IsingEnergy(coupling=1.0)
+x0 = torch.bernoulli(torch.full((4, 48, 48), 0.5))       # random binary lattice
+x = ebm.GibbsWithGradients(steps=3000).sample(energy, x0)
+```
+
+`IsingEnergy(..., learn_coupling=True)` makes `J` a trainable parameter, so the
+same discrete `ContrastiveDivergence` + `ReplayBuffer` recipe can *recover* a
+coupling from data.
