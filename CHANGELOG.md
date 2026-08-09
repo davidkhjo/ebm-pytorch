@@ -2,9 +2,15 @@
 
 ## Unreleased
 
+- `nets.IsingEnergy`: the library's first discrete/lattice energy — a 2D
+  nearest-neighbor Ising energy `E(x) = -J Σ s_i s_j` for binary `(B, H, W)`
+  data, with an optional learnable coupling.
 - New example: `examples/train_composition.py` — trains two stripe experts and
   composes them into a product of experts (intersection), a mixture (union),
   and a tempered energy, all sampled by the same `LangevinDynamics`.
+- New example: `examples/train_ising.py` — samples a 2D Ising lattice with
+  `GibbsWithGradients` at three coupling strengths, showing the ferromagnetic
+  ordering (neighbor agreement rising with `J`).
 
 ## 0.8.0 — 2026-08-08
 

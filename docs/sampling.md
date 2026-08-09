@@ -44,7 +44,9 @@ be calibrated draws from \(p\).
 - **Discrete samplers** propose one flip / one category change per step, so
   budget `steps` at a few times the number of positions; the first-order
   proposal is exact for linear energies (accept rate ≈ 1), and acceptance
-  degrades gracefully with interaction strength.
+  degrades gracefully with interaction strength. See
+  [`examples/train_ising.py`](examples.md#discrete-ebms-a-2d-ising-lattice) for
+  `GibbsWithGradients` on a 2D Ising lattice.
 - **`AnnealedLangevinDynamics(sigmas, step_size, steps_per_sigma)`** follows
   NCSN Algorithm 1: per level \(\alpha_i = \epsilon\,\sigma_i^2/\sigma_L^2\),
   update \(x \leftarrow x - (\alpha_i/2)\nabla E(x,\sigma_i) +
