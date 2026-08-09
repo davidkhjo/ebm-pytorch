@@ -1,7 +1,33 @@
+import math
+
 import torch
 
 import ebm
 from tests.conftest import quadratic_energy
+
+
+def test_bits_per_dim_matches_gaussian_closed_form():
+    # Standard normal: E(x)=||x||^2/2, log Z = (D/2) log(2 pi).
+    d = 5
+    x = torch.randn(32, d)
+    log_z = 0.5 * d * math.log(2 * math.pi)
+    bpd = ebm.eval.bits_per_dim(quadratic_energy, x, log_z)  # dim defaults to d
+    # Closed form: BPD = (E(x) + log Z) / (D log 2).
+    expected = (quadratic_energy(x) + log_z) / (d * math.log(2))
+    assert bpd.shape == (32,)
+    assert torch.allclose(bpd, expected, atol=1e-5)
+    # Lower is better: a well-modeled point (near the mode) beats an outlier.
+    near = torch.zeros(1, d)
+    far = 5 * torch.ones(1, d)
+    assert (
+        ebm.eval.bits_per_dim(quadratic_energy, near, log_z).item()
+        < ebm.eval.bits_per_dim(quadratic_energy, far, log_z).item()
+    )
+    # Explicit dim overrides the default.
+    assert torch.allclose(
+        ebm.eval.bits_per_dim(quadratic_energy, x, log_z, dim=d),
+        -ebm.eval.log_likelihood(quadratic_energy, x, log_z, dim=d),
+    )
 
 
 def test_dataset_shapes_and_dtypes():

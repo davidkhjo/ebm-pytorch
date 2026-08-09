@@ -22,6 +22,7 @@ __all__ = [
     "ais_log_z",
     "reverse_ais_log_z",
     "log_likelihood",
+    "bits_per_dim",
     "AISResult",
 ]
 
@@ -131,3 +132,18 @@ def ood_auroc(energy: EnergyFn, x_in: Tensor, x_out: Tensor) -> float:
     rank_sum_in = ranks[:n_in].sum().item()
     u = rank_sum_in - n_in * (n_in + 1) / 2
     return u / (n_in * n_out)
+
+
+@torch.no_grad()
+def bits_per_dim(energy: EnergyFn, x: Tensor, log_z: float, *, dim: int | None = None) -> Tensor:
+    """Per-sample bits-per-dimension, the standard density-model score (lower is better).
+
+    ``BPD = (E(x) + log Z) / (D log 2)``, where ``D`` is the per-sample
+    dimensionality (defaults to ``x[0].numel()``). This is exactly the negation
+    of ``log_likelihood(..., dim=D)`` — flipped so the sign matches the
+    convention in the literature, where a *lower* BPD means higher likelihood.
+    Needs a ``log_z`` estimate from `ais_log_z` / `reverse_ais_log_z`.
+    """
+    if dim is None:
+        dim = x[0].numel()
+    return -log_likelihood(energy, x, log_z, dim=dim)
