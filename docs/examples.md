@@ -155,3 +155,21 @@ x = ebm.GibbsWithGradients(steps=3000).sample(energy, x0)
 `IsingEnergy(..., learn_coupling=True)` makes `J` a trainable parameter, so the
 same discrete `ContrastiveDivergence` + `ReplayBuffer` recipe can *recover* a
 coupling from data.
+
+## Categorical EBMs: a Potts lattice
+
+`examples/train_potts.py` — the categorical counterpart.
+`CategoricalGibbsWithGradients` samples one-hot data `(B, H, W, K)`, and
+`nets.PottsEnergy` is the K-color generalization of `IsingEnergy`:
+`E(x) = -J Σ_⟨i,j⟩ 1[c_i = c_j]`, where the indicator is the dot product of
+adjacent one-hot rows. A random 5-color speckle (neighbor agreement ≈ 1/K)
+condenses into same-color domains as the coupling grows (0.23 → 0.37 → 0.70):
+
+![Potts result](assets/potts_result.png)
+
+```python
+energy = ebm.nets.PottsEnergy(coupling=2.0)
+x0 = torch.nn.functional.one_hot(torch.randint(5, (1, 40, 40)), 5).float()
+x = ebm.CategoricalGibbsWithGradients(steps=4000).sample(energy, x0)
+colors = x.argmax(-1)                                     # (1, 40, 40) category ids
+```

@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- `nets.PottsEnergy`: the K-color generalization of `IsingEnergy` — a 2D
+  nearest-neighbor Potts energy `E(x) = -J Σ 1[c_i = c_j]` for one-hot
+  `(B, H, W, K)` data, with an optional learnable coupling.
+- New example: `examples/train_potts.py` — samples a 5-state Potts lattice with
+  `CategoricalGibbsWithGradients` at three coupling strengths, showing the
+  disorder-to-domains transition.
+
 ## 0.9.0 — 2026-08-08
 
 - `nets.IsingEnergy`: the library's first discrete/lattice energy — a 2D

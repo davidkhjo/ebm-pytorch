@@ -233,3 +233,31 @@ class IsingEnergy(nn.Module):
         right = (s[:, :, :-1] * s[:, :, 1:]).sum(dim=(1, 2))
         down = (s[:, :-1, :] * s[:, 1:, :]).sum(dim=(1, 2))
         return -self.coupling * (right + down)
+
+
+class PottsEnergy(nn.Module):
+    """2D nearest-neighbor Potts lattice energy for one-hot data ``(B, H, W, K) -> (B,)``.
+
+    The K-color generalization of `IsingEnergy`: neighbors that share a color
+    lower the energy, ``E(x) = -J Σ_⟨i,j⟩ 1[c_i = c_j]`` over right and down
+    neighbors. With one-hot rows the indicator is just the dot product of
+    adjacent category vectors, so the energy is differentiable in the relaxed
+    input — what `CategoricalGibbsWithGradients` needs. Larger ``coupling`` ``J``
+    forms same-color domains. ``coupling`` is a learnable `nn.Parameter` when
+    ``learn_coupling=True`` and a fixed buffer otherwise (``Ising`` is ``K=2``).
+    """
+
+    def __init__(self, coupling: float = 0.5, learn_coupling: bool = False):
+        super().__init__()
+        j = torch.tensor(float(coupling))
+        if learn_coupling:
+            self.coupling = nn.Parameter(j)
+        else:
+            self.register_buffer("coupling", j)
+
+    def forward(self, x: Tensor) -> Tensor:
+        if x.dim() != 4:
+            raise ValueError(f"expected (B, H, W, K) one-hot lattice, got {tuple(x.shape)}")
+        right = (x[:, :, :-1, :] * x[:, :, 1:, :]).sum(dim=(1, 2, 3))
+        down = (x[:, :-1, :, :] * x[:, 1:, :, :]).sum(dim=(1, 2, 3))
+        return -self.coupling * (right + down)
