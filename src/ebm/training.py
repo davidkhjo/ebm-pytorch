@@ -113,6 +113,51 @@ class Trainer:
         self.energy.eval()
         return self.history
 
+    def state_dict(self) -> dict:
+        """Everything needed to resume: energy, optimizer, EMA, loss params, buffer, progress.
+
+        Mirrors the plain-dict convention of `EMA` and `ReplayBuffer`. The PCD
+        replay buffer lives inside the loss (not the trainer), so it is captured
+        generically via ``loss_fn.buffer`` when present. Restore into a freshly
+        constructed `Trainer` with the same architecture (see `load_state_dict`).
+        """
+        state: dict = {
+            "energy": self.energy.state_dict(),
+            "optimizer": self.optimizer.state_dict(),
+            "step_count": self.step_count,
+            "history": self.history,
+        }
+        if self.ema is not None:
+            state["ema"] = self.ema.state_dict()
+        if isinstance(self.loss_fn, nn.Module):
+            state["loss_fn"] = self.loss_fn.state_dict()
+        buffer = getattr(self.loss_fn, "buffer", None)
+        if buffer is not None and hasattr(buffer, "state_dict"):
+            state["buffer"] = buffer.state_dict()
+        return state
+
+    def load_state_dict(self, state: dict) -> None:
+        """Restore a checkpoint from `state_dict` into this (matching) trainer."""
+        self.energy.load_state_dict(state["energy"])
+        self.optimizer.load_state_dict(state["optimizer"])
+        self.step_count = state["step_count"]
+        self.history = list(state["history"])
+        if self.ema is not None and "ema" in state:
+            self.ema.load_state_dict(state["ema"])
+        if isinstance(self.loss_fn, nn.Module) and "loss_fn" in state:
+            self.loss_fn.load_state_dict(state["loss_fn"])
+        buffer = getattr(self.loss_fn, "buffer", None)
+        if buffer is not None and hasattr(buffer, "load_state_dict") and "buffer" in state:
+            buffer.load_state_dict(state["buffer"])
+
+    def save(self, path) -> None:
+        """Write a resumable checkpoint (``torch.save`` of `state_dict`)."""
+        torch.save(self.state_dict(), path)
+
+    def load(self, path) -> None:
+        """Load a checkpoint written by `save` into this (matching) trainer."""
+        self.load_state_dict(torch.load(path, map_location=self.device))
+
 
 def _default_device() -> torch.device:
     if torch.cuda.is_available():
