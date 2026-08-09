@@ -51,14 +51,27 @@ for step in range(3000):
 
 | Piece | Contents |
 |---|---|
-| **Energies** | any callable `(B, *shape) -> (B,)`; `EnergyModel` wrapper, `ebm.score`, `nets.MLPEnergy` / `nets.ConvEnergy` (SiLU, optional spectral norm, no batch norm); noise-conditional variants for NCSN |
+| **Energies** | any callable `(B, *shape) -> (B,)`; `EnergyModel` wrapper, `ebm.score`, `nets.MLPEnergy` / `nets.ConvEnergy` / `nets.ConvClassifier` (SiLU, optional spectral norm, no batch norm), `nets.IsingEnergy` (discrete 2D lattice); noise-conditional variants for NCSN |
 | **Samplers** | `LangevinDynamics` (ULA/SGLD with decoupled step/noise, gradient clipping, sample clamping), `MALA`, `HMC`, `GibbsWithGradients` (binary) + `CategoricalGibbsWithGradients` (one-hot), `AnnealedLangevinDynamics` (noise ladder) |
 | **Losses** | `ContrastiveDivergence` (CD-k / persistent CD via `ReplayBuffer`), `DiffusionRecoveryLikelihood` + `drl_sample` (recovery likelihood on a noise ladder — the most stable EBM training known), `DenoisingScoreMatching` + `MultiSigmaDenoisingScoreMatching` (NCSN), `SlicedScoreMatching` (VR variant), `NoiseContrastiveEstimation` (learnable `log_z`), `JEMLoss` (classifier + EBM) |
 | **JEM** | `ClassifierEnergy`: any K-class classifier as an EBM (`E(x) = -logsumexp logits`), class-conditional sampling via `.condition(y)` |
 | **Composition** | `SumEnergy` (product of experts), `MixtureEnergy`, `TemperedEnergy` — energies compose like densities and nest freely |
-| **Training** | thin `Trainer` (device, optimizer incl. loss params, EMA weights, supervised `(x, y)` batches, metric history), `EMA` |
-| **Eval** | **`ais_log_z` / `reverse_ais_log_z`** — bracket `log Z` from below and above for honest log-likelihoods (nats or bits/dim), `eval.frechet_distance` (FID with any feature extractor), `eval.ood_auroc`, energy histograms |
-| **Data & viz** | 2D toy datasets (`two_moons`, `eight_gaussians`, `checkerboard`, `rings`, `spirals`), `viz.energy_contour` / `plot_samples` / `energy_histogram` |
+| **Training** | thin `Trainer` (device, optimizer incl. loss params, EMA weights, supervised `(x, y)` batches, metric history), `Trainer.save` / `load` checkpointing (resume energy, optimizer, EMA, replay buffer, step count), `EMA` |
+| **Eval** | **`ais_log_z` / `reverse_ais_log_z`** — bracket `log Z` from below and above for honest log-likelihoods, `eval.bits_per_dim`, `eval.frechet_distance` (FID with any feature extractor), `eval.mmd` (RBF MMD²), `eval.ood_auroc`, energy histograms |
+| **Data & viz** | 2D toy datasets (`two_moons`, `eight_gaussians`, `checkerboard`, `rings`, `spirals`) and torchvision-free image loaders (`mnist`, `fashion_mnist`, `cifar10`), `viz.energy_contour` / `plot_samples` / `energy_histogram` / `show_images` |
+
+## Examples
+
+Runnable scripts in [`examples/`](examples) (each `python examples/<name>.py`);
+figures in the [examples gallery](https://davidkhjo.github.io/ebm-pytorch/examples/):
+
+- `train_two_moons.py` — the canonical 2D contrastive-divergence smoke test
+- `train_jem.py` / `train_mnist_jem.py` — classify, generate, and detect OOD with one network
+- `train_mnist.py` — the image-scale IGEBM short-run recipe
+- `train_composition.py` — product of experts / mixture / tempering, composed without retraining
+- `train_ising.py` — a discrete 2D Ising lattice sampled with Gibbs-with-Gradients
+- `checkpoint_resume.py` — save a run and resume it in a fresh process
+- `benchmark_losses.py` — every loss family scored on the evaluation stack
 
 ## Conventions that matter
 
@@ -106,7 +119,8 @@ number; when they don't, increase `n_temps` and check `.ess`.
 
 ## Roadmap
 
-PyPI release, docs site.
+PyPI release (trusted-publisher registration pending). The
+[docs site](https://davidkhjo.github.io/ebm-pytorch/) is live.
 
 ## License
 

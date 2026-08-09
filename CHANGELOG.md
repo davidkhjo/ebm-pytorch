@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.9.0 — 2026-08-08
 
 - `nets.IsingEnergy`: the library's first discrete/lattice energy — a 2D
   nearest-neighbor Ising energy `E(x) = -J Σ s_i s_j` for binary `(B, H, W)`
