@@ -129,4 +129,6 @@ resumed.fit(data, steps=4000)   # step_count continues from 4000
 Load restores *into* a matching trainer (the same load-into-existing pattern as
 `ReplayBuffer` / `EMA`), so build the energy, loss, and buffer the same way
 before calling `load`. A periodic checkpoint pairs naturally with the
-`callback(step, out)` hook.
+`callback(step, out)` hook — see
+[`examples/checkpoint_resume.py`](https://github.com/davidkhjo/ebm-pytorch/blob/main/examples/checkpoint_resume.py)
+for a runnable save-every-N-steps / resume demo.
