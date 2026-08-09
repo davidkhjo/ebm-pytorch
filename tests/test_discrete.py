@@ -143,6 +143,40 @@ def test_ising_energy_shape_and_learnable_coupling():
     assert learn.coupling.grad is not None  # gradient flows to J
 
 
+def test_potts_energy_orders_with_coupling():
+    torch.manual_seed(0)
+    k = 4
+
+    def agreement(coupling):
+        # Sample a 10x10 K-color lattice via categorical GWG and measure the
+        # fraction of neighbor pairs sharing a color. Coupling should order it.
+        energy = ebm.nets.PottsEnergy(coupling=coupling)
+        x0 = onehot_init(12, 10 * 10, k).reshape(12, 10, 10, k)
+        x = ebm.CategoricalGibbsWithGradients(steps=500).sample(energy, x0)
+        c = x.argmax(-1)
+        right = (c[:, :, :-1] == c[:, :, 1:]).float().mean()
+        down = (c[:, :-1, :] == c[:, 1:, :]).float().mean()
+        return 0.5 * (right + down).item()
+
+    disordered = agreement(0.05)
+    ordered = agreement(2.0)
+    assert ordered > disordered
+    # Disordered baseline sits near the random-color agreement 1/K.
+    assert abs(disordered - 1 / k) < 0.15
+    assert ordered > 0.7
+
+
+def test_potts_energy_shape_and_learnable_coupling():
+    x = onehot_init(5, 8 * 8, 3).reshape(5, 8, 8, 3)
+    fixed = ebm.nets.PottsEnergy(coupling=0.7)
+    assert fixed(x).shape == (5,)
+    assert not any(p.requires_grad for p in fixed.parameters())  # buffer, not param
+
+    learn = ebm.nets.PottsEnergy(coupling=0.3, learn_coupling=True)
+    learn(x).sum().backward()
+    assert learn.coupling.grad is not None  # gradient flows to J
+
+
 def test_cd_gwg_trains_bernoulli_ebm():
     true_theta = torch.tensor([1.5, -1.0, 0.0, 0.5])
     data = torch.bernoulli(torch.sigmoid(true_theta).expand(2000, 4))
