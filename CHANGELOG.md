@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- New example: `examples/train_composition.py` — trains two stripe experts and
+  composes them into a product of experts (intersection), a mixture (union),
+  and a tempered energy, all sampled by the same `LangevinDynamics`.
+
 ## 0.8.0 — 2026-08-08
 
 - `datasets.cifar10`: CIFAR-10 as `(N, 3, 32, 32)` float32 in `[-1, 1]` with no

@@ -23,7 +23,9 @@ nested   = ebm.MixtureEnergy(product, sharp)        # compose freely
   building annealing paths.
 
 All three register component `nn.Module`s, so parameters are visible to
-optimizers and frozen correctly during sampling.
+optimizers and frozen correctly during sampling. See
+[`examples/train_composition.py`](examples.md#composing-energies-product-mixture-tempering)
+for a runnable product-of-experts / mixture / tempering demo.
 
 ## Class-conditional energies (JEM)
 
