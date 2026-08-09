@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- `datasets.cifar10`: CIFAR-10 as `(N, 3, 32, 32)` float32 in `[-1, 1]` with no
+  torchvision dependency (downloads the binary distribution and parses the
+  `.bin` batches directly — no pickle; cached in `~/.cache/ebm-pytorch`).
+  Native 32x32 for the default `ConvEnergy` / `ConvClassifier`.
+
 ## 0.7.0 — 2026-08-07
 
 - `nets.ConvClassifier`: the `ConvEnergy` trunk with a position-sensitive
