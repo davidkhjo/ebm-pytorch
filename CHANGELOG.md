@@ -8,6 +8,10 @@
 - New example: `examples/train_potts.py` — samples a 5-state Potts lattice with
   `CategoricalGibbsWithGradients` at three coupling strengths, showing the
   disorder-to-domains transition.
+- New example: `examples/train_ncsn.py` — a standalone tour of the NCSN stack
+  (`NoiseConditionalMLPEnergy` + `MultiSigmaDenoisingScoreMatching` +
+  `AnnealedLangevinDynamics`), showing the learned score field and multi-mode
+  coverage on eight Gaussians.
 
 ## 0.9.0 — 2026-08-08
 
