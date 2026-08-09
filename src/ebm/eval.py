@@ -64,6 +64,8 @@ def frechet_distance(
         return torch.cat(chunks).reshape(len(t), -1).double()
 
     fx, fy = _features(x), _features(y)
+    if len(fx) < 2 or len(fy) < 2:
+        raise ValueError("frechet_distance needs at least 2 samples per set")
     mu_x, mu_y = fx.mean(0), fy.mean(0)
     cov_x = torch.cov(fx.T).reshape(fx.shape[1], -1)
     cov_y = torch.cov(fy.T).reshape(fy.shape[1], -1)
@@ -93,15 +95,22 @@ def mmd(x: Tensor, y: Tensor, *, bandwidth: float | None = None) -> float:
     Cost is O((n+m)²) in memory and time — a couple thousand samples per side
     is plenty.
     """
-    fx = x.reshape(len(x), -1).cpu().double()
-    fy = y.reshape(len(y), -1).cpu().double()
+    n, m = len(x), len(y)
+    if n < 2 or m < 2:
+        raise ValueError("mmd needs at least 2 samples per set")
+    fx = x.reshape(n, -1).cpu().double()
+    fy = y.reshape(m, -1).cpu().double()
     d2 = torch.cdist(torch.cat([fx, fy]), torch.cat([fx, fy])).pow(2)
     if bandwidth is None:
         off_diag = d2[~torch.eye(len(d2), dtype=torch.bool)]
         bandwidth = off_diag.sqrt().median().item()
+    if bandwidth <= 0:
+        raise ValueError(
+            "RBF bandwidth is 0 (the median pairwise distance vanished — the "
+            "samples are nearly identical); pass an explicit positive bandwidth"
+        )
     k = torch.exp(-d2 / (2 * bandwidth**2))
 
-    n, m = len(fx), len(fy)
     k_xx = (k[:n, :n].sum() - k[:n, :n].diagonal().sum()) / (n * (n - 1))
     k_yy = (k[n:, n:].sum() - k[n:, n:].diagonal().sum()) / (m * (m - 1))
     k_xy = k[:n, n:].mean()

@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- `eval.mmd` / `eval.frechet_distance`: raise a clear `ValueError` on degenerate
+  inputs that previously returned `NaN` — fewer than 2 samples per set (the
+  unbiased MMD denominator and single-sample covariance are undefined) and a
+  vanishing RBF bandwidth from the median heuristic on near-identical samples.
+
 ## 0.10.0 — 2026-08-09
 
 - `nets.PottsEnergy`: the K-color generalization of `IsingEnergy` — a 2D
