@@ -9,6 +9,9 @@
 - `viz.show_images`: tile a batch of `(N, C, H, W)` images into one grid —
   grayscale (`C=1`) or RGB (`C=3`), with the `[-1, 1] -> [0, 1]` rescale built
   in. The MNIST examples now use it instead of hand-rolled subplot loops.
+- `Trainer.save` / `Trainer.load` (+ `state_dict` / `load_state_dict`):
+  checkpoint and resume a run — energy weights, optimizer moments, EMA, loss
+  parameters, the PCD replay buffer, and the step counter / metric history.
 
 ## 0.7.0 — 2026-08-07
 

@@ -108,3 +108,25 @@ random class's joint energy — otherwise `condition(k)` samples a logit whose
 off-manifold shape CD never trained, which beyond toy data yields adversarial
 textures rather than class samples (see the
 [MNIST JEM example](examples.md#jem-at-image-scale-classify-detect-ood-and-draw-digits)).
+
+## Saving and resuming
+
+Image-scale runs take minutes; `Trainer.save(path)` / `Trainer.load(path)`
+checkpoint everything needed to resume — energy weights, optimizer moments, the
+EMA copy, any loss parameters (e.g. NCE's `log_z`), the PCD replay buffer, and
+the step counter and metric history:
+
+```python
+trainer.fit(data, steps=4000)
+trainer.save("ckpt.pt")
+
+# later — reconstruct with the SAME architecture, then load into it:
+resumed = ebm.Trainer(build_energy(), build_loss(), lr=1e-4, ema_decay=0.999)
+resumed.load("ckpt.pt")
+resumed.fit(data, steps=4000)   # step_count continues from 4000
+```
+
+Load restores *into* a matching trainer (the same load-into-existing pattern as
+`ReplayBuffer` / `EMA`), so build the energy, loss, and buffer the same way
+before calling `load`. A periodic checkpoint pairs naturally with the
+`callback(step, out)` hook.
