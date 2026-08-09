@@ -128,6 +128,55 @@ def test_mnist_like_loaders_offline(tmp_path):
         assert torch.equal(loader(root=tmp_path), x)
 
 
+def test_cifar_parser_roundtrip():
+    from ebm.datasets import _parse_cifar_batch
+
+    # Two records: label byte then 3072 image bytes (R, G, B planes).
+    rec0 = bytes([3]) + bytes(i % 256 for i in range(3072))
+    rec1 = bytes([7]) + bytes((i * 5) % 256 for i in range(3072))
+    images, labels = _parse_cifar_batch(rec0 + rec1)
+    assert images.shape == (2, 3, 32, 32) and images.dtype == torch.uint8
+    assert labels.tolist() == [3, 7]
+    # First red-plane pixel is byte 0 of the image payload.
+    assert images[0, 0, 0, 0].item() == 0
+    assert images[1, 0, 0, 1].item() == 5
+
+    import pytest
+
+    with pytest.raises(ValueError):
+        _parse_cifar_batch(b"\x00" * 100)  # not a whole number of records
+
+
+def test_cifar10_offline(tmp_path):
+    # Build a tiny archive with the real member layout; the loader must parse
+    # and scale it to [-1, 1] without hitting the network.
+    import io
+    import tarfile
+
+    def batch_bytes(labels):
+        out = bytearray()
+        for i, lab in enumerate(labels):
+            out += bytes([lab]) + bytes((j + i) % 256 for j in range(3072))
+        return bytes(out)
+
+    archive = tmp_path / "cifar-10-binary.tar.gz"
+    with tarfile.open(archive, "w:gz") as tar:
+        members = [f"cifar-10-batches-bin/data_batch_{i}.bin" for i in range(1, 6)]
+        members.append("cifar-10-batches-bin/test_batch.bin")
+        for k, name in enumerate(members):
+            payload = batch_bytes([k, k + 1])
+            info = tarfile.TarInfo(name)
+            info.size = len(payload)
+            tar.addfile(info, io.BytesIO(payload))
+
+    x, y = ebm.datasets.cifar10(root=tmp_path, return_labels=True)
+    assert x.shape == (10, 3, 32, 32) and x.dtype == torch.float32  # 5 train batches x 2
+    assert x.min() >= -1 and x.max() <= 1
+    assert y[:2].tolist() == [0, 1]
+    test_x = ebm.datasets.cifar10(root=tmp_path, train=False)
+    assert test_x.shape == (2, 3, 32, 32)
+
+
 def test_mmd_zero_for_same_distribution_positive_for_blur():
     g = torch.Generator().manual_seed(2)
     moons_a = ebm.datasets.two_moons(1500, generator=g)
