@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.8.0 — 2026-08-08
 
 - `datasets.cifar10`: CIFAR-10 as `(N, 3, 32, 32)` float32 in `[-1, 1]` with no
   torchvision dependency (downloads the binary distribution and parses the
@@ -12,6 +12,9 @@
 - `Trainer.save` / `Trainer.load` (+ `state_dict` / `load_state_dict`):
   checkpoint and resume a run — energy weights, optimizer moments, EMA, loss
   parameters, the PCD replay buffer, and the step counter / metric history.
+- `eval.bits_per_dim`: the conventionally reported density-model score
+  (lower is better) — the negation of `log_likelihood(..., dim=D)`, with `D`
+  defaulting to the per-sample element count.
 
 ## 0.7.0 — 2026-08-07
 

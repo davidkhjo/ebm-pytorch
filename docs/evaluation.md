@@ -14,9 +14,13 @@ stochastic *upper* bound. Report both:
 lower = ebm.ais_log_z(energy, shape=(2,), n_temps=1000, n_chains=256)
 upper = ebm.reverse_ais_log_z(energy, lower.samples, n_temps=1000)
 
-nats = ebm.log_likelihood(energy, x_test, lower.log_z)
-bits = ebm.log_likelihood(energy, x_test, lower.log_z, dim=2)  # bits/dim
+nats = ebm.log_likelihood(energy, x_test, lower.log_z)          # higher is better
+bpd = ebm.eval.bits_per_dim(energy, x_test, lower.log_z)       # lower is better
 ```
+
+`log_likelihood` is higher-is-better (nats, or bits/dim with `dim=`);
+`eval.bits_per_dim` returns the conventionally reported quantity — its negation,
+so *lower* is better — defaulting `dim` to the per-sample element count.
 
 When the two agree, trust the number. When they don't, the gap tells you how
 much annealing is missing — increase `n_temps` (many cheap temperatures beat
