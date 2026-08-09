@@ -1,11 +1,15 @@
 # Changelog
 
-## Unreleased
+## 0.10.1 — 2026-08-09
 
 - `eval.mmd` / `eval.frechet_distance`: raise a clear `ValueError` on degenerate
   inputs that previously returned `NaN` — fewer than 2 samples per set (the
   unbiased MMD denominator and single-sample covariance are undefined) and a
   vanishing RBF bandwidth from the median heuristic on near-identical samples.
+- Test hardening: direct unit tests for `nets.IsingEnergy` / `nets.PottsEnergy`
+  (closed-form lattice energies), `_GaussianFourierFeatures`, `utils.EMA` (exact
+  lerp + state-dict roundtrip) and `frozen_params`, and an AIS ESS closed-form
+  check (equals `n_chains` when the target matches the base).
 
 ## 0.10.0 — 2026-08-09
 
