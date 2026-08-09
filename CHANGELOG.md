@@ -6,6 +6,9 @@
   torchvision dependency (downloads the binary distribution and parses the
   `.bin` batches directly — no pickle; cached in `~/.cache/ebm-pytorch`).
   Native 32x32 for the default `ConvEnergy` / `ConvClassifier`.
+- `viz.show_images`: tile a batch of `(N, C, H, W)` images into one grid —
+  grayscale (`C=1`) or RGB (`C=3`), with the `[-1, 1] -> [0, 1]` rescale built
+  in. The MNIST examples now use it instead of hand-rolled subplot loops.
 
 ## 0.7.0 — 2026-08-07
 

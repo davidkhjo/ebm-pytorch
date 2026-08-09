@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import torch
 from torch import Tensor
 
@@ -54,6 +56,59 @@ def plot_samples(x: Tensor, ax=None, **scatter_kwargs):
     scatter_kwargs.setdefault("alpha", 0.5)
     ax.scatter(x[:, 0], x[:, 1], **scatter_kwargs)
     ax.set_aspect("equal")
+    return ax
+
+
+@torch.no_grad()
+def show_images(
+    images: Tensor,
+    *,
+    nrow: int = 8,
+    ax: Any = None,
+    rescale: bool = True,
+    title: str | None = None,
+):
+    """Tile a batch of images ``(N, C, H, W)`` into a single grid. Returns the axes.
+
+    Handles the image-EBM convention directly: ``C == 1`` renders as inverted
+    grayscale (dark strokes on white, like the MNIST examples), ``C == 3`` as
+    RGB. With ``rescale`` (default) images are mapped from ``[-1, 1]`` to
+    ``[0, 1]`` and clamped — matching `datasets.mnist` / `datasets.cifar10` and
+    ``LangevinDynamics(clamp=(-1, 1))``. Pass ``rescale=False`` for images
+    already in ``[0, 1]``.
+
+    Args:
+        images: ``(N, C, H, W)`` tensor with ``C`` in ``{1, 3}``.
+        nrow: Number of images per row; rows are filled left-to-right.
+        ax: Existing axes to draw on; a new figure is created if ``None``.
+        rescale: Map ``[-1, 1] -> [0, 1]`` before display.
+        title: Optional axes title.
+    """
+    plt = _require_matplotlib()
+    x = images.detach().cpu().float()
+    if x.dim() != 4 or x.shape[1] not in (1, 3):
+        raise ValueError(f"expected (N, C, H, W) with C in {{1, 3}}, got {tuple(x.shape)}")
+    if rescale:
+        x = x * 0.5 + 0.5
+    x = x.clamp(0, 1)
+
+    n, c, h, w = x.shape
+    ncol = nrow
+    nrows = (n + ncol - 1) // ncol
+    grid = torch.ones(c, nrows * h, ncol * w)  # white padding for the last row
+    for i in range(n):
+        r, col = divmod(i, ncol)
+        grid[:, r * h : (r + 1) * h, col * w : (col + 1) * w] = x[i]
+
+    if ax is None:
+        _, ax = plt.subplots(figsize=(ncol, nrows))
+    if c == 1:
+        ax.imshow(grid[0], cmap="gray_r", vmin=0, vmax=1)
+    else:
+        ax.imshow(grid.permute(1, 2, 0))
+    ax.axis("off")
+    if title is not None:
+        ax.set_title(title)
     return ax
 
 

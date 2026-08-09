@@ -62,16 +62,12 @@ def main() -> None:
     import matplotlib
 
     matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
 
-    fig, axes = plt.subplots(8, 8, figsize=(8, 8))
-    for ax, img in zip(axes.flat, samples, strict=True):
-        ax.imshow(img[0].clamp(-1, 1) * 0.5 + 0.5, cmap="gray_r", vmin=0, vmax=1)
-        ax.axis("off")
-    fig.suptitle("MNIST digits from a short-run EBM (IGEBM recipe)", fontsize=12)
-    fig.tight_layout()
+    ax = ebm.viz.show_images(
+        samples, nrow=8, title="MNIST digits from a short-run EBM (IGEBM recipe)"
+    )
     out = Path(__file__).parent / "mnist_result.png"
-    fig.savefig(out, dpi=150)
+    ax.figure.savefig(out, dpi=150, bbox_inches="tight")
     print(f"wrote {out}")
 
 

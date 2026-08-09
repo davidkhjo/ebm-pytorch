@@ -96,22 +96,18 @@ def main() -> None:
     import matplotlib
 
     matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
 
-    fig, axes = plt.subplots(10, 8, figsize=(8, 10))
-    for i, (ax, img) in enumerate(zip(axes.flat, samples, strict=True)):
-        ax.imshow(img[0].clamp(-1, 1) * 0.5 + 0.5, cmap="gray_r", vmin=0, vmax=1)
-        ax.axis("off")
-        if i % 8 == 0:
-            ax.set_ylabel(str(i // 8))
-    fig.suptitle(
-        f"JEM class-conditional MNIST samples (row = class)\n"
-        f"accuracy {acc:.3f}, OOD AUROC {auroc:.3f}",
-        fontsize=12,
+    # 8 samples per class, stacked class-by-class, so nrow=8 puts one class per row.
+    ax = ebm.viz.show_images(
+        samples,
+        nrow=8,
+        title=(
+            f"JEM class-conditional MNIST samples (row = class 0-9)\n"
+            f"accuracy {acc:.3f}, OOD AUROC {auroc:.3f}"
+        ),
     )
-    fig.tight_layout()
     out = Path(__file__).parent / "mnist_jem_result.png"
-    fig.savefig(out, dpi=150)
+    ax.figure.savefig(out, dpi=150, bbox_inches="tight")
     print(f"wrote {out}")
 
 
