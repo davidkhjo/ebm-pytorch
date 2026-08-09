@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import torch
 from torch import Tensor
 
@@ -62,7 +64,7 @@ def show_images(
     images: Tensor,
     *,
     nrow: int = 8,
-    ax=None,
+    ax: Any = None,
     rescale: bool = True,
     title: str | None = None,
 ):
