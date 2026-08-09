@@ -11,6 +11,9 @@
 - New example: `examples/train_ising.py` — samples a 2D Ising lattice with
   `GibbsWithGradients` at three coupling strengths, showing the ferromagnetic
   ordering (neighbor agreement rising with `J`).
+- New example: `examples/checkpoint_resume.py` — demonstrates `Trainer.save` /
+  `Trainer.load` with periodic checkpointing from the `callback` hook, then a
+  fresh trainer resuming the run (energy, EMA, and replay buffer restored).
 
 ## 0.8.0 — 2026-08-08
 
