@@ -3,7 +3,7 @@
 The 2D functions return a float32 tensor of shape ``(n, 2)``, roughly
 centered and on a scale of a few units, with an optional ``generator`` for
 determinism. `mnist` / `fashion_mnist` parse the raw IDX files directly and
-`cifar10` parses the binary distribution — all torchvision-free.
+`cifar10` / `cifar100` parse the binary distributions — all torchvision-free.
 """
 
 from __future__ import annotations
@@ -118,6 +118,8 @@ def fashion_mnist(
 
 _CIFAR10_URL = "https://www.cs.toronto.edu/~kriz/cifar-10-binary.tar.gz"
 _CIFAR10_RECORD = 1 + 3 * 32 * 32  # 1 label byte + 3072 image bytes (R, G, B planes)
+_CIFAR100_URL = "https://www.cs.toronto.edu/~kriz/cifar-100-binary.tar.gz"
+_CIFAR100_RECORD = 2 + 3 * 32 * 32  # coarse + fine label byte + 3072 image bytes
 
 
 def _parse_cifar_batch(raw: bytes) -> tuple[Tensor, Tensor]:
@@ -128,6 +130,40 @@ def _parse_cifar_batch(raw: bytes) -> tuple[Tensor, Tensor]:
     labels = records[:, 0]
     images = records[:, 1:].reshape(-1, 3, 32, 32)  # planes are already (C, H, W)
     return images, labels
+
+
+def _parse_cifar100_batch(raw: bytes) -> tuple[Tensor, Tensor]:
+    """Parse a CIFAR-100 binary batch: record is coarse + fine label + 3072 image bytes."""
+    if len(raw) % _CIFAR100_RECORD != 0:
+        raise ValueError("buffer is not a whole number of CIFAR-100 records")
+    records = torch.frombuffer(bytearray(raw), dtype=torch.uint8).reshape(-1, _CIFAR100_RECORD)
+    labels = records[:, 1]  # fine label (0-99); column 0 is the 20-way coarse label
+    images = records[:, 2:].reshape(-1, 3, 32, 32)
+    return images, labels
+
+
+def _load_cifar_like(url, archive_name, members, parser, root, return_labels):
+    """Download (if needed), extract the given members, parse, and scale to [-1, 1]."""
+    root = Path(root).expanduser() if root is not None else Path.home() / ".cache" / "ebm-pytorch"
+    root.mkdir(parents=True, exist_ok=True)
+    archive = root / archive_name
+    if not archive.exists():
+        urllib.request.urlretrieve(url, archive)  # noqa: S310
+
+    images, labels = [], []
+    with tarfile.open(archive, "r:gz") as tar:
+        for name in members:
+            member = tar.extractfile(name)
+            if member is None:
+                raise FileNotFoundError(f"{name} missing from {archive_name}")
+            img, lab = parser(member.read())
+            images.append(img)
+            labels.append(lab)
+
+    x = torch.cat(images).float() / 127.5 - 1.0
+    if return_labels:
+        return x, torch.cat(labels).long()
+    return x
 
 
 def cifar10(
@@ -147,31 +183,43 @@ def cifar10(
         train: Training split (50k, batches 1-5) or test split (10k).
         return_labels: Also return ``(N,)`` int64 labels.
     """
-    root = Path(root).expanduser() if root is not None else Path.home() / ".cache" / "ebm-pytorch"
-    root.mkdir(parents=True, exist_ok=True)
-    archive = root / "cifar-10-binary.tar.gz"
-    if not archive.exists():
-        urllib.request.urlretrieve(_CIFAR10_URL, archive)  # noqa: S310
-
-    names = (
+    members = (
         [f"cifar-10-batches-bin/data_batch_{i}.bin" for i in range(1, 6)]
         if train
         else ["cifar-10-batches-bin/test_batch.bin"]
     )
-    images, labels = [], []
-    with tarfile.open(archive, "r:gz") as tar:
-        for name in names:
-            member = tar.extractfile(name)
-            if member is None:
-                raise FileNotFoundError(f"{name} missing from CIFAR-10 archive")
-            img, lab = _parse_cifar_batch(member.read())
-            images.append(img)
-            labels.append(lab)
+    return _load_cifar_like(
+        _CIFAR10_URL, "cifar-10-binary.tar.gz", members, _parse_cifar_batch, root, return_labels
+    )
 
-    x = torch.cat(images).float() / 127.5 - 1.0
-    if return_labels:
-        return x, torch.cat(labels).long()
-    return x
+
+def cifar100(
+    root: str | Path | None = None,
+    train: bool = True,
+    return_labels: bool = False,
+) -> Tensor | tuple[Tensor, Tensor]:
+    """CIFAR-100 as ``(N, 3, 32, 32)`` float32 in ``[-1, 1]`` — no torchvision.
+
+    Same binary format and scaling as `cifar10` (its own ``.tar.gz``, cached
+    alongside). Its role in the EBM literature is the natural natural-image
+    out-of-distribution counterpart to CIFAR-10 for `eval.ood_auroc`. Note that
+    CIFAR-10 vs CIFAR-100 is a *near-OOD* pair (both are natural 32x32 objects),
+    so separation is harder — expect lower AUROC than CIFAR-10 vs SVHN.
+
+    Args:
+        root: Cache directory.
+        train: Training split (50k) or test split (10k).
+        return_labels: Also return ``(N,)`` int64 fine labels (0-99).
+    """
+    member = "cifar-100-binary/train.bin" if train else "cifar-100-binary/test.bin"
+    return _load_cifar_like(
+        _CIFAR100_URL,
+        "cifar-100-binary.tar.gz",
+        [member],
+        _parse_cifar100_batch,
+        root,
+        return_labels,
+    )
 
 
 def eight_gaussians(n: int, std: float = 0.15, generator: torch.Generator | None = None) -> Tensor:
