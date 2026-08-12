@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+message: "If you use ebm-pytorch in your research, please cite it as below."
+title: "ebm-pytorch: training and using energy-based models in PyTorch"
+abstract: >-
+  A narrow, reliable PyTorch library for energy-based models: contrastive
+  divergence and persistent CD, score matching (denoising, sliced, NCSN),
+  noise-contrastive estimation, diffusion recovery likelihood, and JEM;
+  Langevin/MALA/HMC and Gibbs-with-Gradients samplers; energy composition;
+  and an evaluation stack (AIS-bracketed log Z, FID, MMD, OOD AUROC,
+  bits-per-dim).
+type: software
+authors:
+  - given-names: David
+    email: david@cortify.io
+license: MIT
+repository-code: "https://github.com/davidkhjo/ebm-pytorch"
+url: "https://davidkhjo.github.io/ebm-pytorch/"
+keywords:
+  - energy-based-models
+  - ebm
+  - generative-models
+  - langevin-dynamics
+  - contrastive-divergence
+  - score-matching
+  - pytorch

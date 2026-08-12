@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.11.1 — 2026-08-12
+
+- Repository polish: `CONTRIBUTING.md` (dev workflow + the load-bearing
+  conventions), `CITATION.cff`, and richer `[project.urls]` (Repository,
+  Issues, Changelog) for the package's PyPI sidebar.
+
 ## 0.11.0 — 2026-08-12
 
 - `datasets.cifar100`: CIFAR-100 as `(N, 3, 32, 32)` float32 in `[-1, 1]`,
