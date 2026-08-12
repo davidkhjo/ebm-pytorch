@@ -58,7 +58,7 @@ for step in range(3000):
 | **Composition** | `SumEnergy` (product of experts), `MixtureEnergy`, `TemperedEnergy` — energies compose like densities and nest freely |
 | **Training** | thin `Trainer` (device, optimizer incl. loss params, EMA weights, supervised `(x, y)` batches, metric history), `Trainer.save` / `load` checkpointing (resume energy, optimizer, EMA, replay buffer, step count), `EMA` |
 | **Eval** | **`ais_log_z` / `reverse_ais_log_z`** — bracket `log Z` from below and above for honest log-likelihoods, `eval.bits_per_dim`, `eval.frechet_distance` (FID with any feature extractor), `eval.mmd` (RBF MMD²), `eval.ood_auroc`, energy histograms |
-| **Data & viz** | 2D toy datasets (`two_moons`, `eight_gaussians`, `checkerboard`, `rings`, `spirals`) and torchvision-free image loaders (`mnist`, `fashion_mnist`, `cifar10`), `viz.energy_contour` / `plot_samples` / `energy_histogram` / `show_images` |
+| **Data & viz** | 2D toy datasets (`two_moons`, `eight_gaussians`, `checkerboard`, `rings`, `spirals`) and torchvision-free image loaders (`mnist`, `fashion_mnist`, `cifar10`, `cifar100`), `viz.energy_contour` / `plot_samples` / `energy_histogram` / `show_images` |
 
 ## Examples
 
@@ -71,6 +71,7 @@ figures in the [examples gallery](https://davidkhjo.github.io/ebm-pytorch/exampl
 - `train_composition.py` — product of experts / mixture / tempering, composed without retraining
 - `train_ising.py` / `train_potts.py` — discrete 2D lattices sampled with (categorical) Gibbs-with-Gradients
 - `train_ncsn.py` — score-based generation: multi-sigma denoising + annealed Langevin
+- `train_cifar_ood.py` — energy-based OOD at color scale (CIFAR-10 vs CIFAR-100)
 - `checkpoint_resume.py` — save a run and resume it in a fresh process
 - `benchmark_losses.py` — every loss family scored on the evaluation stack
 

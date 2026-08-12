@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.0 — 2026-08-12
 
 - `datasets.cifar100`: CIFAR-100 as `(N, 3, 32, 32)` float32 in `[-1, 1]`,
   torchvision-free (same binary `tar.gz` family as `cifar10`; fine labels
