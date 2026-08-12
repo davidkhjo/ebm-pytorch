@@ -40,6 +40,8 @@ class SumEnergy(_Composite):
     component is. Weights default to 1.
     """
 
+    weights: Tensor
+
     def __init__(self, *energies: EnergyFn, weights: Sequence[float] | None = None):
         super().__init__(energies)
         if weights is None:
@@ -62,6 +64,8 @@ class MixtureEnergy(_Composite):
     components' *unnormalized* densities — with differently-scaled experts the
     effective mixture proportions absorb the unknown Z_i.
     """
+
+    log_weights: Tensor
 
     def __init__(self, *energies: EnergyFn, weights: Sequence[float] | None = None):
         super().__init__(energies)

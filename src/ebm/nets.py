@@ -53,6 +53,8 @@ def _as_batch_sigma(sigma, x: Tensor) -> Tensor:
 class _GaussianFourierFeatures(nn.Module):
     """Random Fourier embedding of ``log sigma`` (Song et al., score-SDE style)."""
 
+    freqs: Tensor
+
     def __init__(self, embed_dim: int = 32, scale: float = 1.0):
         super().__init__()
         if embed_dim % 2 != 0:

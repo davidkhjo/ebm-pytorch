@@ -65,6 +65,8 @@ class MultiSigmaDenoisingScoreMatching(nn.Module):
     same ladder.
     """
 
+    sigmas: Tensor
+
     def __init__(self, sigmas: Tensor):
         super().__init__()
         sigmas = torch.as_tensor(sigmas, dtype=torch.float32)
