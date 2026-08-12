@@ -31,7 +31,6 @@ class HMC(Sampler):
         super().__init__(steps)
         self.step_size = step_size
         self.leapfrog_steps = leapfrog_steps
-        self.last_accept_rate: float | None = None
 
     def step(self, energy: EnergyFn, x: Tensor) -> Tensor:
         eps = self.step_size
@@ -52,6 +51,6 @@ class HMC(Sampler):
         h1 = e_new + 0.5 * _flat_sum(p.pow(2))
         log_alpha = h0 - h1
         accept = torch.log(torch.rand_like(log_alpha)) < log_alpha
-        self.last_accept_rate = accept.float().mean().item()
+        self._last_accept = accept.float().mean()
         accept = accept.reshape(-1, *([1] * (x.dim() - 1)))
         return torch.where(accept, x_new.detach(), x0)

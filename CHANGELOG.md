@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.11.2 — 2026-08-12
+
+- Performance (GPU/MPS): defer the per-step `last_accept_rate` host sync in
+  `MALA` / `HMC` / the discrete samplers — the accept fraction is kept on-device
+  and only materialized to a Python float when read, turning one GPU→CPU sync
+  *per MCMC step* into one *per `sample()` call*. Measured ~5× faster MALA
+  sampling and ~20% faster HMC-based AIS on Apple MPS with a cheap energy; no
+  effect on CPU or on the already-sync-free `LangevinDynamics`. Also coalesced
+  `ContrastiveDivergence`'s four metric syncs into one. No API change — returned
+  values are identical.
+
 ## 0.11.1 — 2026-08-12
 
 - Repository polish: `CONTRIBUTING.md` (dev workflow + the load-bearing

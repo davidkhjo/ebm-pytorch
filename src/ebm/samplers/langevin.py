@@ -70,7 +70,6 @@ class MALA(Sampler):
     def __init__(self, step_size: float = 1e-2, steps: int = 100):
         super().__init__(steps)
         self.step_size = step_size
-        self.last_accept_rate: float | None = None
 
     def step(self, energy: EnergyFn, x: Tensor) -> Tensor:
         eps = self.step_size
@@ -86,6 +85,6 @@ class MALA(Sampler):
         log_alpha = (e_x - e_prop) + (log_q_bwd - log_q_fwd)
 
         accept = torch.log(torch.rand_like(log_alpha)) < log_alpha
-        self.last_accept_rate = accept.float().mean().item()
+        self._last_accept = accept.float().mean()
         accept = accept.reshape(-1, *([1] * (x.dim() - 1)))
         return torch.where(accept, proposal.detach(), x.detach())

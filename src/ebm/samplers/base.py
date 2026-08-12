@@ -21,6 +21,18 @@ class Sampler(ABC):
 
     def __init__(self, steps: int):
         self.steps = steps
+        self._last_accept: Tensor | None = None
+
+    @property
+    def last_accept_rate(self) -> float | None:
+        """Acceptance rate of the most recent step (``None`` for unadjusted samplers).
+
+        Metropolis samplers store the per-step accept fraction as a device
+        tensor and only materialize it to a Python float here, on read — so a
+        long ``sample`` run costs one host sync at the end instead of one per
+        step.
+        """
+        return None if self._last_accept is None else float(self._last_accept)
 
     @abstractmethod
     def step(self, energy: EnergyFn, x: Tensor) -> Tensor:
