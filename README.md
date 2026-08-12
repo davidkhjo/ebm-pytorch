@@ -105,7 +105,9 @@ uv run pytest            # includes distribution-correctness tests for the sampl
 uv run ruff check .
 ```
 
-Design notes and the research that informed this library live in `research/`.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the dev workflow and the conventions
+(sign, stop-gradients, no BatchNorm) that contributions should preserve. Design
+notes and the research that informed this library live in `research/`.
 
 ## Evaluating log-likelihood
 
