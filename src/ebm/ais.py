@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from typing import Protocol, cast
 
 import torch
 from torch import Tensor, nn
@@ -28,6 +29,12 @@ from ebm.energy import EnergyFn
 from ebm.samplers.base import Sampler
 from ebm.samplers.hmc import HMC
 from ebm.utils import frozen_params
+
+
+class _AdaptiveSampler(Protocol):
+    """A sampler whose ``step_size`` AIS may tune from the acceptance rate."""
+
+    step_size: float
 
 
 @dataclass
@@ -116,13 +123,14 @@ def _anneal(
                 if adapt_step_size and original_step_size is not None:
                     rate = getattr(sampler, "last_accept_rate", None)
                     if rate is not None:
+                        adaptive = cast("_AdaptiveSampler", sampler)
                         if rate > 0.8:
-                            sampler.step_size *= 1.1
+                            adaptive.step_size *= 1.1
                         elif rate < 0.5:
-                            sampler.step_size *= 0.9
+                            adaptive.step_size *= 0.9
     finally:
         if original_step_size is not None:
-            sampler.step_size = original_step_size
+            cast("_AdaptiveSampler", sampler).step_size = original_step_size
     return x, log_w
 
 

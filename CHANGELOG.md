@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.11.3 — 2026-08-12
+
+- Static type checking: CI now runs `mypy` over `src/ebm`, so the types the
+  library advertises via its `py.typed` marker are actually verified. Fixed the
+  type imprecisions this surfaced (registered-buffer annotations, the Trainer's
+  supervised-call signature, AIS step-size adaptation, the annealed sampler's
+  intentional override) — no runtime behavior change.
+
 ## 0.11.2 — 2026-08-12
 
 - Performance (GPU/MPS): defer the per-step `last_accept_rate` host sync in

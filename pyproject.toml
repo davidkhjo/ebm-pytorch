@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ebm-pytorch"
-version = "0.11.2"
+version = "0.11.3"
 description = "A PyTorch library for training and using energy-based models (EBMs)"
 readme = "README.md"
 license = "MIT"
@@ -33,7 +33,7 @@ dependencies = ["torch>=2.0"]
 
 [project.optional-dependencies]
 viz = ["matplotlib>=3.7"]
-dev = ["pytest>=8.0", "ruff>=0.4", "matplotlib>=3.7"]
+dev = ["pytest>=8.0", "ruff>=0.4", "mypy>=1.8", "matplotlib>=3.7"]
 docs = ["mkdocs-material>=9", "mkdocstrings[python]>=0.24"]
 
 [project.urls]
@@ -53,6 +53,10 @@ extend-exclude = ["docs"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+files = ["src/ebm"]
+ignore_missing_imports = true       # torch / matplotlib ship partial stubs
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -36,7 +36,11 @@ class AnnealedLangevinDynamics(Sampler):
         self.sigmas = sigmas
         self.step_size = step_size
 
-    def step(self, energy: ConditionalEnergyFn, x: Tensor, sigma_index: int = -1) -> Tensor:
+    # This sampler intentionally extends the base signature: it targets a
+    # noise-conditional energy and carries a per-level sigma index.
+    def step(  # type: ignore[override]
+        self, energy: ConditionalEnergyFn, x: Tensor, sigma_index: int = -1
+    ) -> Tensor:
         sigma = self.sigmas[sigma_index].to(x.device)
         alpha = self.step_size * (sigma / self.sigmas[-1]) ** 2
 
@@ -46,7 +50,7 @@ class AnnealedLangevinDynamics(Sampler):
         _, grad = self._energy_grad(energy_at_sigma, x)
         return x.detach() - (alpha / 2) * grad + torch.sqrt(alpha) * torch.randn_like(x)
 
-    def sample(
+    def sample(  # type: ignore[override]
         self,
         energy: ConditionalEnergyFn,
         x_init: Tensor,

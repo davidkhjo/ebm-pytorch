@@ -33,7 +33,7 @@ class Trainer:
     def __init__(
         self,
         energy: nn.Module,
-        loss_fn: Callable[[nn.Module, Tensor], LossOutput],
+        loss_fn: Callable[..., LossOutput],
         optimizer: torch.optim.Optimizer | None = None,
         lr: float = 1e-3,
         device: torch.device | str | None = None,

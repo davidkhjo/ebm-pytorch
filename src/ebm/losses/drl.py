@@ -95,6 +95,8 @@ class DiffusionRecoveryLikelihood(nn.Module):
         energy_reg: Optional ``α (E(x⁺)² + E(x⁻)²)`` magnitude regularizer.
     """
 
+    sigmas: Tensor
+
     def __init__(
         self,
         sigmas: Tensor,
