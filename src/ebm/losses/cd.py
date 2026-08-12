@@ -54,14 +54,17 @@ class ContrastiveDivergence(nn.Module):
 
         e_pos = energy(x)
         e_neg = energy(x_neg)
-        loss = e_pos.mean() - e_neg.mean()
+        ep, en = e_pos.mean(), e_neg.mean()
+        loss = ep - en
         if self.energy_reg > 0:
             loss = loss + self.energy_reg * (e_pos.pow(2).mean() + e_neg.pow(2).mean())
 
+        # One host sync for all four scalar metrics instead of four.
+        loss_v, ep_v, en_v, gap_v = torch.stack([loss.detach(), ep, en, ep - en]).tolist()
         metrics = {
-            "loss": loss.item(),
-            "energy_pos": e_pos.mean().item(),
-            "energy_neg": e_neg.mean().item(),
-            "energy_gap": (e_pos.mean() - e_neg.mean()).item(),
+            "loss": loss_v,
+            "energy_pos": ep_v,
+            "energy_neg": en_v,
+            "energy_gap": gap_v,
         }
         return LossOutput(loss=loss, metrics=metrics, x_neg=x_neg)

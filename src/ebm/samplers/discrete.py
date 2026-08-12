@@ -31,7 +31,6 @@ class GibbsWithGradients(Sampler):
 
     def __init__(self, steps: int = 100):
         super().__init__(steps)
-        self.last_accept_rate: float | None = None
 
     def step(self, energy: EnergyFn, x: Tensor) -> Tensor:
         batch_size = x.shape[0]
@@ -54,7 +53,7 @@ class GibbsWithGradients(Sampler):
         log_alpha = (e_x - e_prop) + (log_q_bwd - log_q_fwd)
 
         accept = torch.log(torch.rand_like(log_alpha)) < log_alpha
-        self.last_accept_rate = accept.float().mean().item()
+        self._last_accept = accept.float().mean()
         accept = accept.reshape(-1, *([1] * (x.dim() - 1)))
         return torch.where(accept, proposal, x.detach())
 
@@ -86,7 +85,6 @@ class CategoricalGibbsWithGradients(Sampler):
 
     def __init__(self, steps: int = 100):
         super().__init__(steps)
-        self.last_accept_rate: float | None = None
 
     @staticmethod
     def _change_logits(x3: Tensor, grad3: Tensor) -> Tensor:
@@ -119,6 +117,6 @@ class CategoricalGibbsWithGradients(Sampler):
         log_alpha = (e_x - e_prop) + (log_q_bwd - log_q_fwd)
 
         accept = torch.log(torch.rand_like(log_alpha)) < log_alpha
-        self.last_accept_rate = accept.float().mean().item()
+        self._last_accept = accept.float().mean()
         accept = accept.reshape(-1, *([1] * (x.dim() - 1)))
         return torch.where(accept, proposal, x.detach())

@@ -33,6 +33,18 @@ def test_hmc_targets_standard_normal():
     assert sampler.last_accept_rate > 0.6
 
 
+def test_accept_rate_is_none_before_sampling_then_float():
+    for sampler in (ebm.MALA(step_size=0.2, steps=20), ebm.HMC(step_size=0.2, steps=5)):
+        assert sampler.last_accept_rate is None  # nothing sampled yet
+        sampler.sample(quadratic_energy, torch.randn(64, 2))
+        rate = sampler.last_accept_rate
+        assert isinstance(rate, float) and 0.0 < rate <= 1.0
+    # Unadjusted Langevin has no accept step, so it stays None.
+    ula = ebm.LangevinDynamics(step_size=0.01, steps=5)
+    ula.sample(quadratic_energy, torch.randn(8, 2))
+    assert ula.last_accept_rate is None
+
+
 def test_sample_works_under_no_grad_and_restores_requires_grad():
     net = ebm.nets.MLPEnergy(dim=2, hidden=(16,))
     sampler = ebm.LangevinDynamics(step_size=0.01, steps=5)
