@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- `datasets.cifar100`: CIFAR-100 as `(N, 3, 32, 32)` float32 in `[-1, 1]`,
+  torchvision-free (same binary `tar.gz` family as `cifar10`; fine labels
+  0-99). The standard natural-image out-of-distribution counterpart to
+  CIFAR-10 for `eval.ood_auroc`.
+
 ## 0.10.1 — 2026-08-09
 
 - `eval.mmd` / `eval.frechet_distance`: raise a clear `ValueError` on degenerate

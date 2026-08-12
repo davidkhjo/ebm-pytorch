@@ -203,6 +203,52 @@ def test_cifar10_offline(tmp_path):
     assert test_x.shape == (2, 3, 32, 32)
 
 
+def test_cifar100_parser_roundtrip():
+    from ebm.datasets import _parse_cifar100_batch
+
+    # Record: coarse label, fine label, then 3072 image bytes (R, G, B planes).
+    rec0 = bytes([11, 3]) + bytes(i % 256 for i in range(3072))
+    rec1 = bytes([19, 7]) + bytes((i * 5) % 256 for i in range(3072))
+    images, labels = _parse_cifar100_batch(rec0 + rec1)
+    assert images.shape == (2, 3, 32, 32) and images.dtype == torch.uint8
+    assert labels.tolist() == [3, 7]  # fine label (column 1), not the coarse column 0
+    assert images[0, 0, 0, 0].item() == 0  # image payload starts at byte 2
+    assert images[1, 0, 0, 1].item() == 5
+
+    import pytest
+
+    with pytest.raises(ValueError):
+        _parse_cifar100_batch(b"\x00" * 100)  # not a whole number of records
+
+
+def test_cifar100_offline(tmp_path):
+    import io
+    import tarfile
+
+    def batch_bytes(fine_labels):
+        out = bytearray()
+        for i, lab in enumerate(fine_labels):
+            out += bytes([0, lab]) + bytes((j + i) % 256 for j in range(3072))
+        return bytes(out)
+
+    archive = tmp_path / "cifar-100-binary.tar.gz"
+    with tarfile.open(archive, "w:gz") as tar:
+        for name, labels in (
+            ("cifar-100-binary/train.bin", [5, 42, 99]),
+            ("cifar-100-binary/test.bin", [7, 13]),
+        ):
+            payload = batch_bytes(labels)
+            info = tarfile.TarInfo(name)
+            info.size = len(payload)
+            tar.addfile(info, io.BytesIO(payload))
+
+    x, y = ebm.datasets.cifar100(root=tmp_path, return_labels=True)
+    assert x.shape == (3, 3, 32, 32) and x.dtype == torch.float32
+    assert x.min() >= -1 and x.max() <= 1
+    assert y.tolist() == [5, 42, 99] and y.dtype == torch.int64
+    assert ebm.datasets.cifar100(root=tmp_path, train=False).shape == (2, 3, 32, 32)
+
+
 def test_mmd_zero_for_same_distribution_positive_for_blur():
     g = torch.Generator().manual_seed(2)
     moons_a = ebm.datasets.two_moons(1500, generator=g)
