@@ -198,3 +198,31 @@ data. On the eight-Gaussians target the annealed sampler **covers all eight
 modes** (density concentrating at each), where plain single-σ Langevin tends to
 collapse onto only a few — annealing from a near-Gaussian large-σ landscape is
 what lets chains cross the low-density gaps between modes.
+
+## Energy-based OOD at color scale (CIFAR-10 vs CIFAR-100)
+
+`examples/train_cifar_ood.py` — a classifier is secretly an EBM (its marginal
+energy is `-logsumexp(logits)`), so one `ConvClassifier` trained on CIFAR-10
+gives both a label and an out-of-distribution score. Training is
+cross-entropy-dominant with a light CD term (the stable regime — no generation),
+and CIFAR-100 images are flagged as OOD purely by energy:
+
+![CIFAR OOD result](assets/cifar_ood_result.png)
+
+```python
+energy = ebm.ClassifierEnergy(ebm.nets.ConvClassifier(num_classes=10, in_channels=3))
+loss_fn = ebm.JEMLoss(ebm.ContrastiveDivergence(sampler, buffer=buffer, energy_reg=1.0),
+                      cd_weight=0.1)
+trainer.fit((cifar10_x, cifar10_y), steps=8000)
+auroc = ebm.eval.ood_auroc(energy, cifar10_test, cifar100_test)  # energy as OOD score
+```
+
+Read it honestly: the classifier reaches **~61% CIFAR-10 test accuracy** (a real
+classifier), but the **OOD AUROC is only ~0.57**. CIFAR-10 vs CIFAR-100 is a
+*near-OOD* pair — both are natural 32×32 objects — which is genuinely hard, so
+the energy histograms overlap heavily and the signal is weak-but-real, far below
+MNIST-vs-FashionMNIST's ~0.99. A *far-OOD* pair like CIFAR-10 vs SVHN separates
+much more cleanly, but SVHN ships as MATLAB `.mat` files and this library stays
+torchvision-free. The example is about the method and API at color scale, not a
+state-of-the-art number. (A heavier CD term was tried and did not improve the
+near-OOD AUROC at this budget.)

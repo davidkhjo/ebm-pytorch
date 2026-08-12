@@ -6,6 +6,10 @@
   torchvision-free (same binary `tar.gz` family as `cifar10`; fine labels
   0-99). The standard natural-image out-of-distribution counterpart to
   CIFAR-10 for `eval.ood_auroc`.
+- New example: `examples/train_cifar_ood.py` — energy-based OOD at color scale.
+  A `ConvClassifier` trained on CIFAR-10 (cross-entropy-dominant JEM) flags
+  CIFAR-100 as out-of-distribution by its `-logsumexp(logits)` energy, framed
+  honestly as a hard near-OOD test (~61% accuracy, ~0.57 AUROC).
 
 ## 0.10.1 — 2026-08-09
 
