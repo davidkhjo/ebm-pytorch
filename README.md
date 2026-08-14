@@ -62,7 +62,8 @@ for step in range(3000):
 
 ## Examples
 
-Runnable scripts in [`examples/`](examples) (each `python examples/<name>.py`);
+Runnable scripts in [`examples/`](https://github.com/davidkhjo/ebm-pytorch/tree/main/examples)
+(each `python examples/<name>.py`);
 figures in the [examples gallery](https://davidkhjo.github.io/ebm-pytorch/examples/):
 
 - `train_two_moons.py` — the canonical 2D contrastive-divergence smoke test
@@ -105,7 +106,8 @@ uv run pytest            # includes distribution-correctness tests for the sampl
 uv run ruff check .
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the dev workflow and the conventions
+See [CONTRIBUTING.md](https://github.com/davidkhjo/ebm-pytorch/blob/main/CONTRIBUTING.md)
+for the dev workflow and the conventions
 (sign, stop-gradients, no BatchNorm) that contributions should preserve. Design
 notes and the research that informed this library live in `research/`.
 
