@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.11.4 — 2026-08-14
+
+- Packaging: make the two relative README links (`examples/`, `CONTRIBUTING.md`)
+  absolute GitHub URLs so the PyPI project page — which renders the README as
+  the long description — shows working links instead of broken relative ones.
+  `twine check` passes on the built sdist + wheel.
+
 ## 0.11.3 — 2026-08-12
 
 - Static type checking: CI now runs `mypy` over `src/ebm`, so the types the
