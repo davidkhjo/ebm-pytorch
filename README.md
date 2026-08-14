@@ -1,10 +1,10 @@
 # ebmkit
 
 [![CI](https://github.com/davidkhjo/ebmkit/actions/workflows/ci.yml/badge.svg)](https://github.com/davidkhjo/ebmkit/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/ebmkit.svg)](https://pypi.org/project/ebmkit/)
-[![coverage](https://img.shields.io/badge/coverage-95%25-brightgreen.svg)](https://github.com/davidkhjo/ebmkit/actions/workflows/ci.yml)
-[![Python](https://img.shields.io/pypi/pyversions/ebmkit.svg)](https://pypi.org/project/ebmkit/)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/davidkhjo/ebmkit/blob/main/LICENSE)
+[![PyPI](https://img.shields.io/pypi/v/ebmkit)](https://pypi.org/project/ebmkit/)
+[![coverage](https://img.shields.io/badge/coverage-95%25-brightgreen)](https://github.com/davidkhjo/ebmkit/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/pypi/pyversions/ebmkit)](https://pypi.org/project/ebmkit/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](https://github.com/davidkhjo/ebmkit/blob/main/LICENSE)
 
 **Energy-based models in PyTorch** — samplers, training losses, and honest
 evaluation, as composable objects with tested defaults.
