@@ -53,6 +53,11 @@ synthetic archives in `tmp_path`); never add a test that hits the network.
    and `uv run mypy` are green.
 4. Open a PR against `main`. CI runs the suite on Python 3.10–3.13.
 
+Pull requests are also reviewed by Claude (`.github/workflows/claude-code-review.yml`).
+It stays inactive until a maintainer adds the `CLAUDE_CODE_OAUTH_TOKEN` repository
+secret (from `claude setup-token`) and sets the repository variable
+`ENABLE_CLAUDE_REVIEW` to `true`.
+
 ## Adding a loss or sampler
 
 - A **loss** subclasses `nn.Module`, lives under `src/ebm/losses/`, and returns
