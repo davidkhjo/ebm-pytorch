@@ -49,9 +49,8 @@ synthetic archives in `tmp_path`); never add a test that hits the network.
 
 1. Branch from `main`.
 2. Keep the change focused; add or update tests.
-3. Ensure `uv run pytest`, `uv run ruff check .`, and `uv run ruff format
-   --check .` are green. If you touch docstrings or the public API, also run
-   `uv run mkdocs build --strict`.
+3. Ensure `uv run pytest`, `uv run ruff check .`, `uv run ruff format --check .`,
+   and `uv run mypy` are green.
 4. Open a PR against `main`. CI runs the suite on Python 3.10–3.13.
 
 ## Adding a loss or sampler

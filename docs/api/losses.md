@@ -1,3 +1,0 @@
-# Losses
-
-::: ebm.losses
