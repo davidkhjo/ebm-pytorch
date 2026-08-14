@@ -5,7 +5,7 @@ levels of rigor.
 
 ## Log-likelihood via log-Z bracketing
 
-`ais_log_z` estimates \(\log Z = \log \int e^{-E(x)}\,dx\) by annealed
+`ais_log_z` estimates $\log Z = \log \int e^{-E(x)}\,dx$ by annealed
 importance sampling — a stochastic *lower* bound in expectation.
 `reverse_ais_log_z` runs the same path backwards from model samples and is a
 stochastic *upper* bound. Report both:

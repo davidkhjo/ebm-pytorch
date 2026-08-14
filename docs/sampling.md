@@ -1,6 +1,6 @@
 # Sampling
 
-All samplers target \(p(x) \propto e^{-E(x)}\) by *descending* the energy
+All samplers target $p(x) \propto e^{-E(x)}$ by *descending* the energy
 gradient, share the interface `sampler.sample(energy, x_init, steps=...,
 return_trajectory=...)`, freeze the energy network's parameters while running,
 and return detached samples.
@@ -32,7 +32,7 @@ The first converges to the model distribution and is what you want for toy
 data, MCMC diagnostics, and anything where correctness matters. The second is
 an optimization-with-jitter that works empirically for image EBM training —
 use it with a `ReplayBuffer` and `energy_reg`, and don't expect its samples to
-be calibrated draws from \(p\).
+be calibrated draws from $p$.
 
 ## Tuning
 
@@ -48,9 +48,9 @@ be calibrated draws from \(p\).
   [`examples/train_ising.py`](examples.md#discrete-ebms-a-2d-ising-lattice) for
   `GibbsWithGradients` on a 2D Ising lattice.
 - **`AnnealedLangevinDynamics(sigmas, step_size, steps_per_sigma)`** follows
-  NCSN Algorithm 1: per level \(\alpha_i = \epsilon\,\sigma_i^2/\sigma_L^2\),
-  update \(x \leftarrow x - (\alpha_i/2)\nabla E(x,\sigma_i) +
-  \sqrt{\alpha_i}\,\xi\). Pair with `MultiSigmaDenoisingScoreMatching`.
+  NCSN Algorithm 1: per level $\alpha_i = \epsilon\,\sigma_i^2/\sigma_L^2$,
+  update $x \leftarrow x - (\alpha_i/2)\nabla E(x,\sigma_i) +
+  \sqrt{\alpha_i}\,\xi$. Pair with `MultiSigmaDenoisingScoreMatching`.
 
 ## Writing your own
 
