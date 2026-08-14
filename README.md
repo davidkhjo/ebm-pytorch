@@ -4,7 +4,6 @@
 [![PyPI](https://img.shields.io/pypi/v/ebmkit.svg)](https://pypi.org/project/ebmkit/)
 [![coverage](https://img.shields.io/badge/coverage-95%25-brightgreen.svg)](https://github.com/davidkhjo/ebmkit/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/pypi/pyversions/ebmkit.svg)](https://pypi.org/project/ebmkit/)
-[![downloads](https://img.shields.io/pypi/dm/ebmkit.svg)](https://pypi.org/project/ebmkit/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/davidkhjo/ebmkit/blob/main/LICENSE)
 
 **Energy-based models in PyTorch** — samplers, training losses, and honest
@@ -53,14 +52,6 @@ returns `LossOutput(loss, metrics, x_neg)`; call `out.loss.backward()`).
 | **Eval** | `ais_log_z` / `reverse_ais_log_z` (bracket `log Z`), `bits_per_dim`, `frechet_distance` (FID), `mmd`, `ood_auroc` |
 | **Data & viz** | 2D toys (`two_moons`, `eight_gaussians`, `checkerboard`, `rings`, `spirals`) and torchvision-free image loaders (`mnist`, `fashion_mnist`, `cifar10`, `cifar100`); `viz.energy_contour` / `plot_samples` / `energy_histogram` / `show_images` |
 
-## Docs
-
-- [Training methods](https://github.com/davidkhjo/ebmkit/blob/main/docs/training.md) — choosing a loss; CD/PCD, NCSN, DRL, NCE, JEM
-- [Samplers](https://github.com/davidkhjo/ebmkit/blob/main/docs/sampling.md) — Langevin/MALA/HMC, Gibbs-with-Gradients, annealed
-- [Evaluation](https://github.com/davidkhjo/ebmkit/blob/main/docs/evaluation.md) — log-Z bracketing, FID, MMD, OOD, bits/dim
-- [Composition](https://github.com/davidkhjo/ebmkit/blob/main/docs/composition.md) — products, mixtures, tempering
-- [Benchmarks](https://github.com/davidkhjo/ebmkit/blob/main/docs/benchmarks.md) — every loss family scored on the eval stack
-
 ## Examples
 
 Runnable scripts in [`examples/`](https://github.com/davidkhjo/ebmkit/tree/main/examples) (`python examples/<name>.py`):
@@ -84,7 +75,7 @@ Runnable scripts in [`examples/`](https://github.com/davidkhjo/ebmkit/tree/main/
 - **The CD loss value is not a convergence signal** — it hovers near zero at
   equilibrium; watch `metrics["energy_gap"]` and energy histograms.
 
-See [`docs/`](https://github.com/davidkhjo/ebmkit/tree/main/docs) and [CONTRIBUTING.md](https://github.com/davidkhjo/ebmkit/blob/main/CONTRIBUTING.md) for the rest.
+See [CONTRIBUTING.md](https://github.com/davidkhjo/ebmkit/blob/main/CONTRIBUTING.md) for the rest.
 
 ## Development
 
