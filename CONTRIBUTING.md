@@ -49,14 +49,11 @@ synthetic archives in `tmp_path`); never add a test that hits the network.
 
 1. Branch from `main`.
 2. Keep the change focused; add or update tests.
-3. Ensure `uv run pytest`, `uv run ruff check .`, `uv run ruff format --check .`,
-   and `uv run mypy` are green.
-4. Open a PR against `main`. CI runs the suite on Python 3.10–3.13.
-
-Pull requests are also reviewed by Claude (`.github/workflows/claude-code-review.yml`).
-It stays inactive until a maintainer adds the `CLAUDE_CODE_OAUTH_TOKEN` repository
-secret (from `claude setup-token`) and sets the repository variable
-`ENABLE_CLAUDE_REVIEW` to `true`.
+3. Ensure `make check` (lint, type-check, tests) is green — or run
+   `uv run ruff check .`, `uv run ruff format --check .`, `uv run mypy`, and
+   `uv run pytest` individually.
+4. Open a PR against `main`. CI runs the suite on Python 3.10–3.13, and every PR
+   is reviewed by Claude before it can be merged. Only a maintainer merges.
 
 ## Adding a loss or sampler
 
@@ -65,3 +62,19 @@ secret (from `claude setup-token`) and sets the repository variable
 - A **sampler** subclasses `ebm.samplers.base.Sampler` and implements `step`;
   the base class handles the detach/freeze loop. Add a test that it targets a
   known distribution and, for MH samplers, exposes `last_accept_rate`.
+
+## Releasing (maintainers)
+
+The version lives in one place, `src/ebm/__init__.py`, and hatchling reads it.
+To cut a release:
+
+```bash
+# 1. update CHANGELOG.md, then bump (also commits + tags):
+make bump-patch          # or bump-minor / bump-major
+# 2. publish:
+git push --follow-tags
+gh release create vX.Y.Z --title vX.Y.Z --notes "See CHANGELOG.md"
+```
+
+The GitHub release triggers `publish.yml`, which builds and uploads to PyPI via
+trusted publishing.

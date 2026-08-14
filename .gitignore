@@ -25,3 +25,6 @@ checkpoints/
 .idea/
 .vscode/
 site/
+
+# Nia tooling config (local only)
+nia.json

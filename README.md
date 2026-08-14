@@ -2,12 +2,13 @@
 
 [![CI](https://github.com/davidkhjo/ebmkit/actions/workflows/ci.yml/badge.svg)](https://github.com/davidkhjo/ebmkit/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/ebmkit.svg)](https://pypi.org/project/ebmkit/)
+[![coverage](https://img.shields.io/badge/coverage-95%25-brightgreen.svg)](https://github.com/davidkhjo/ebmkit/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/pypi/pyversions/ebmkit.svg)](https://pypi.org/project/ebmkit/)
+[![downloads](https://img.shields.io/pypi/dm/ebmkit.svg)](https://pypi.org/project/ebmkit/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/davidkhjo/ebmkit/blob/main/LICENSE)
 
-A small, reliable PyTorch toolkit for training and using **energy-based models** —
-the MCMC samplers, training losses, replay buffers, and diagnostics every EBM
-project otherwise rebuilds from scratch, as composable objects with tested defaults.
+**Energy-based models in PyTorch** — samplers, training losses, and honest
+evaluation, as composable objects with tested defaults.
 
 An EBM is an unnormalized density `p(x) ∝ exp(-E(x))` defined by a network
 `E: (B, *shape) -> (B,)`. `torch` is the only runtime dependency.
