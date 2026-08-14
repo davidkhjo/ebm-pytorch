@@ -3,8 +3,8 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "ebm-pytorch"
-version = "0.11.4"
+name = "ebmkit"
+version = "0.12.0"
 description = "A PyTorch library for training and using energy-based models (EBMs)"
 readme = "README.md"
 license = "MIT"
@@ -34,14 +34,12 @@ dependencies = ["torch>=2.0"]
 [project.optional-dependencies]
 viz = ["matplotlib>=3.7"]
 dev = ["pytest>=8.0", "ruff>=0.4", "mypy>=1.8", "matplotlib>=3.7"]
-docs = ["mkdocs-material>=9", "mkdocstrings[python]>=0.24"]
 
 [project.urls]
-Homepage = "https://github.com/davidkhjo/ebm-pytorch"
-Documentation = "https://davidkhjo.github.io/ebm-pytorch/"
-Repository = "https://github.com/davidkhjo/ebm-pytorch"
-Issues = "https://github.com/davidkhjo/ebm-pytorch/issues"
-Changelog = "https://github.com/davidkhjo/ebm-pytorch/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/davidkhjo/ebmkit"
+Repository = "https://github.com/davidkhjo/ebmkit"
+Issues = "https://github.com/davidkhjo/ebmkit/issues"
+Changelog = "https://github.com/davidkhjo/ebmkit/blob/main/CHANGELOG.md"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ebm"]

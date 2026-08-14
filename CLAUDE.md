@@ -1,6 +1,6 @@
-# ebm-pytorch
+# ebmkit
 
-Python library (`import ebm`, PyPI name `ebm-pytorch`) for training and using
+Python library (`import ebm`, PyPI name `ebmkit`) for training and using
 energy-based models in PyTorch. src/ layout, hatchling build, torch is the only
 runtime dependency.
 

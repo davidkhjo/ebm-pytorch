@@ -1,4 +1,4 @@
-# Contributing to ebm-pytorch
+# Contributing to ebmkit
 
 Thanks for your interest! This library aims to be **narrow and reliable** — a
 small, well-tested set of energy-based-model primitives — so contributions that
@@ -9,8 +9,8 @@ deepen correctness, clarity, and evaluation are especially welcome.
 The project uses [uv](https://docs.astral.sh/uv/). No manual venv needed:
 
 ```bash
-git clone https://github.com/davidkhjo/ebm-pytorch
-cd ebm-pytorch
+git clone https://github.com/davidkhjo/ebmkit
+cd ebmkit
 uv run pytest            # full test suite (CPU-only, seeded)
 uv run ruff check .      # lint
 uv run ruff format .     # format
