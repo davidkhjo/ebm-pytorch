@@ -63,7 +63,7 @@ def _load_mnist_like(
     train: bool,
     return_labels: bool,
 ) -> Tensor | tuple[Tensor, Tensor]:
-    root = Path(root).expanduser() if root is not None else Path.home() / ".cache" / "ebm-pytorch"
+    root = Path(root).expanduser() if root is not None else Path.home() / ".cache" / "ebmkit"
     root.mkdir(parents=True, exist_ok=True)
     prefix = "train" if train else "t10k"
 
@@ -90,7 +90,7 @@ def mnist(
     """MNIST digits as ``(N, 1, 28, 28)`` float32 in ``[-1, 1]`` — no torchvision.
 
     Downloads the raw IDX files (~11 MB) on first use into ``root`` (default
-    ``~/.cache/ebm-pytorch``) and parses them directly. The ``[-1, 1]`` range
+    ``~/.cache/ebmkit``) and parses them directly. The ``[-1, 1]`` range
     pairs with ``LangevinDynamics(clamp=(-1, 1))`` and the image-EBM recipes.
 
     Args:
@@ -144,7 +144,7 @@ def _parse_cifar100_batch(raw: bytes) -> tuple[Tensor, Tensor]:
 
 def _load_cifar_like(url, archive_name, members, parser, root, return_labels):
     """Download (if needed), extract the given members, parse, and scale to [-1, 1]."""
-    root = Path(root).expanduser() if root is not None else Path.home() / ".cache" / "ebm-pytorch"
+    root = Path(root).expanduser() if root is not None else Path.home() / ".cache" / "ebmkit"
     root.mkdir(parents=True, exist_ok=True)
     archive = root / archive_name
     if not archive.exists():
@@ -174,7 +174,7 @@ def cifar10(
     """CIFAR-10 as ``(N, 3, 32, 32)`` float32 in ``[-1, 1]`` — no torchvision.
 
     Downloads the binary distribution (~170 MB) on first use into ``root``
-    (default ``~/.cache/ebm-pytorch``) and parses the ``.bin`` batches directly
+    (default ``~/.cache/ebmkit``) and parses the ``.bin`` batches directly
     — no pickle. Native 32x32 for the default `ConvEnergy` / `ConvClassifier`;
     the ``[-1, 1]`` range pairs with ``LangevinDynamics(clamp=(-1, 1))``.
 
