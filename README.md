@@ -1,26 +1,28 @@
-# ebm-pytorch
+# ebmkit
 
-A small, reliable PyTorch library for training and using **energy-based models** (EBMs).
+[![CI](https://github.com/davidkhjo/ebmkit/actions/workflows/ci.yml/badge.svg)](https://github.com/davidkhjo/ebmkit/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/ebmkit.svg)](https://pypi.org/project/ebmkit/)
+[![Python](https://img.shields.io/pypi/pyversions/ebmkit.svg)](https://pypi.org/project/ebmkit/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/davidkhjo/ebmkit/blob/main/LICENSE)
 
-**Docs: https://davidkhjo.github.io/ebm-pytorch/**
+A small, reliable PyTorch toolkit for training and using **energy-based models** —
+the MCMC samplers, training losses, replay buffers, and diagnostics every EBM
+project otherwise rebuilds from scratch, as composable objects with tested defaults.
 
-An EBM defines an unnormalized density `p(x) ∝ exp(-E(x))` through a neural network
-`E: (B, *shape) -> (B,)`. This library provides the pieces that every EBM project
-rebuilds from scratch — MCMC samplers, training losses, replay buffers, diagnostics —
-as small composable objects with tested, correct defaults.
+An EBM is an unnormalized density `p(x) ∝ exp(-E(x))` defined by a network
+`E: (B, *shape) -> (B,)`. `torch` is the only runtime dependency.
 
-> Not to be confused with *Explainable Boosting Machines* (interpretml), which also
-> go by "EBM". This is the deep-learning kind: LeCun et al. (2006), Du & Mordatch
-> (2019), Song & Kingma (2021).
+> Not the *Explainable Boosting Machines* that also go by "EBM" — this is the
+> deep-learning kind (LeCun et al. 2006; Du & Mordatch 2019; Song & Kingma 2021).
 
 ## Install
 
 ```bash
-pip install -e ".[dev]"        # from a checkout
-# runtime dependency is just torch>=2.0; add [viz] for matplotlib plotting
+pip install ebmkit          # runtime dependency is just torch>=2.0
+pip install "ebmkit[viz]"   # + matplotlib for the plotting helpers
 ```
 
-## Quickstart
+The import name is `ebm`:
 
 ```python
 import torch, ebm
@@ -35,99 +37,66 @@ trainer.fit(ebm.datasets.two_moons(8192), steps=3000, batch_size=256)
 samples = sampler.sample(energy, torch.randn(2000, 2), steps=500)
 ```
 
-The `Trainer` is optional sugar — the underlying loop is plain PyTorch:
-
-```python
-opt = torch.optim.Adam(energy.parameters(), lr=1e-3)
-for step in range(3000):
-    x = data[torch.randint(len(data), (256,))]
-    out = loss_fn(energy, x)  # LossOutput(loss, metrics, x_neg)
-    opt.zero_grad()
-    out.loss.backward()
-    opt.step()
-```
+The `Trainer` is optional sugar — the loop underneath is plain PyTorch (each loss
+returns `LossOutput(loss, metrics, x_neg)`; call `out.loss.backward()`).
 
 ## What's in the box
 
 | Piece | Contents |
 |---|---|
-| **Energies** | any callable `(B, *shape) -> (B,)`; `EnergyModel` wrapper, `ebm.score`, `nets.MLPEnergy` / `nets.ConvEnergy` / `nets.ConvClassifier` (SiLU, optional spectral norm, no batch norm), `nets.IsingEnergy` / `nets.PottsEnergy` (discrete 2D lattices); noise-conditional variants for NCSN |
-| **Samplers** | `LangevinDynamics` (ULA/SGLD with decoupled step/noise, gradient clipping, sample clamping), `MALA`, `HMC`, `GibbsWithGradients` (binary) + `CategoricalGibbsWithGradients` (one-hot), `AnnealedLangevinDynamics` (noise ladder) |
-| **Losses** | `ContrastiveDivergence` (CD-k / persistent CD via `ReplayBuffer`), `DiffusionRecoveryLikelihood` + `drl_sample` (recovery likelihood on a noise ladder — the most stable EBM training known), `DenoisingScoreMatching` + `MultiSigmaDenoisingScoreMatching` (NCSN), `SlicedScoreMatching` (VR variant), `NoiseContrastiveEstimation` (learnable `log_z`), `JEMLoss` (classifier + EBM) |
-| **JEM** | `ClassifierEnergy`: any K-class classifier as an EBM (`E(x) = -logsumexp logits`), class-conditional sampling via `.condition(y)` |
-| **Composition** | `SumEnergy` (product of experts), `MixtureEnergy`, `TemperedEnergy` — energies compose like densities and nest freely |
-| **Training** | thin `Trainer` (device, optimizer incl. loss params, EMA weights, supervised `(x, y)` batches, metric history), `Trainer.save` / `load` checkpointing (resume energy, optimizer, EMA, replay buffer, step count), `EMA` |
-| **Eval** | **`ais_log_z` / `reverse_ais_log_z`** — bracket `log Z` from below and above for honest log-likelihoods, `eval.bits_per_dim`, `eval.frechet_distance` (FID with any feature extractor), `eval.mmd` (RBF MMD²), `eval.ood_auroc`, energy histograms |
-| **Data & viz** | 2D toy datasets (`two_moons`, `eight_gaussians`, `checkerboard`, `rings`, `spirals`) and torchvision-free image loaders (`mnist`, `fashion_mnist`, `cifar10`, `cifar100`), `viz.energy_contour` / `plot_samples` / `energy_histogram` / `show_images` |
+| **Energies** | any callable `(B, *shape) -> (B,)`; `nets.MLPEnergy` / `ConvEnergy` / `ConvClassifier` (SiLU, optional spectral norm, no batch norm), `nets.IsingEnergy` / `PottsEnergy` (discrete lattices), noise-conditional variants for NCSN; `EnergyModel`, `ebm.score` |
+| **Samplers** | `LangevinDynamics` (ULA/SGLD), `MALA`, `HMC`, `GibbsWithGradients` + `CategoricalGibbsWithGradients`, `AnnealedLangevinDynamics` |
+| **Losses** | `ContrastiveDivergence` (CD-k / persistent CD), `DiffusionRecoveryLikelihood` + `drl_sample`, `DenoisingScoreMatching` / `MultiSigmaDenoisingScoreMatching` (NCSN), `SlicedScoreMatching`, `NoiseContrastiveEstimation`, `JEMLoss` |
+| **Composition** | `SumEnergy` (product of experts), `MixtureEnergy`, `TemperedEnergy` — energies compose like densities and nest |
+| **Training** | thin `Trainer` (device, EMA, supervised batches, `save`/`load` checkpointing), `ReplayBuffer`, `EMA` |
+| **Eval** | `ais_log_z` / `reverse_ais_log_z` (bracket `log Z`), `bits_per_dim`, `frechet_distance` (FID), `mmd`, `ood_auroc` |
+| **Data & viz** | 2D toys (`two_moons`, `eight_gaussians`, `checkerboard`, `rings`, `spirals`) and torchvision-free image loaders (`mnist`, `fashion_mnist`, `cifar10`, `cifar100`); `viz.energy_contour` / `plot_samples` / `energy_histogram` / `show_images` |
+
+## Docs
+
+- [Training methods](https://github.com/davidkhjo/ebmkit/blob/main/docs/training.md) — choosing a loss; CD/PCD, NCSN, DRL, NCE, JEM
+- [Samplers](https://github.com/davidkhjo/ebmkit/blob/main/docs/sampling.md) — Langevin/MALA/HMC, Gibbs-with-Gradients, annealed
+- [Evaluation](https://github.com/davidkhjo/ebmkit/blob/main/docs/evaluation.md) — log-Z bracketing, FID, MMD, OOD, bits/dim
+- [Composition](https://github.com/davidkhjo/ebmkit/blob/main/docs/composition.md) — products, mixtures, tempering
+- [Benchmarks](https://github.com/davidkhjo/ebmkit/blob/main/docs/benchmarks.md) — every loss family scored on the eval stack
 
 ## Examples
 
-Runnable scripts in [`examples/`](https://github.com/davidkhjo/ebm-pytorch/tree/main/examples)
-(each `python examples/<name>.py`);
-figures in the [examples gallery](https://davidkhjo.github.io/ebm-pytorch/examples/):
+Runnable scripts in [`examples/`](https://github.com/davidkhjo/ebmkit/tree/main/examples) (`python examples/<name>.py`):
 
 - `train_two_moons.py` — the canonical 2D contrastive-divergence smoke test
 - `train_jem.py` / `train_mnist_jem.py` — classify, generate, and detect OOD with one network
 - `train_mnist.py` — the image-scale IGEBM short-run recipe
-- `train_composition.py` — product of experts / mixture / tempering, composed without retraining
-- `train_ising.py` / `train_potts.py` — discrete 2D lattices sampled with (categorical) Gibbs-with-Gradients
+- `train_composition.py` — product of experts / mixture / tempering, without retraining
+- `train_ising.py` / `train_potts.py` — discrete lattices via (categorical) Gibbs-with-Gradients
 - `train_ncsn.py` — score-based generation: multi-sigma denoising + annealed Langevin
 - `train_cifar_ood.py` — energy-based OOD at color scale (CIFAR-10 vs CIFAR-100)
 - `checkpoint_resume.py` — save a run and resume it in a fresh process
-- `benchmark_losses.py` — every loss family scored on the evaluation stack
 
-## Conventions that matter
+## Conventions
 
-- **Sign:** `p ∝ exp(-E)`. Samplers *descend* the energy gradient; training pushes
-  data energy *down*.
-- **Stop-gradients:** MCMC negatives are detached and the energy network's
-  parameters are frozen during sampling; parameter gradients flow only through
-  `E(x_data) - E(x_neg)`. Score-matching losses do the opposite and backprop
-  through the score (`create_graph=True`).
-- **The CD loss value is not a convergence signal.** It hovers near zero (or goes
-  negative) at equilibrium — monitor `metrics["energy_gap"]` and the energy
-  histograms instead.
-- **When plain CD won't converge, tether the sampler.** Diffusion recovery
-  likelihood trains the same noise-conditional energies as NCSN but samples
-  only the *conditional* `p(x | x̃) ∝ exp(-E(x,σ) - ‖x̃-x‖²/2s²)` between
-  adjacent noise levels — near-unimodal, so short-run MCMC genuinely mixes.
-- **Two Langevin regimes, one keyword apart:** `noise_scale=None` gives the
-  mathematically correct `sqrt(2*step_size)` noise (convergent training, toy data);
-  practitioner "short-run" image training uses a cold, decoupled noise, e.g.
-  `LangevinDynamics(step_size=10.0, noise_scale=0.005, grad_clip=0.01, steps=60)`
-  with `ReplayBuffer(10_000, shape, reinit_prob=0.05)` and `energy_reg=1.0`
-  (the IGEBM recipe).
+- **Sign:** `p ∝ exp(-E)` — low energy is high probability. Samplers *descend*
+  the energy gradient; training pushes data energy *down*. Never flip this.
+- **Stop-gradients:** MCMC negatives are detached and the energy's parameters are
+  frozen during sampling; score-matching losses instead keep the graph
+  (`create_graph=True`).
+- **The CD loss value is not a convergence signal** — it hovers near zero at
+  equilibrium; watch `metrics["energy_gap"]` and energy histograms.
+
+See [`docs/`](https://github.com/davidkhjo/ebmkit/tree/main/docs) and [CONTRIBUTING.md](https://github.com/davidkhjo/ebmkit/blob/main/CONTRIBUTING.md) for the rest.
 
 ## Development
 
 ```bash
-uv venv && uv pip install -e ".[dev]"
-uv run pytest            # includes distribution-correctness tests for the samplers
-uv run ruff check .
+uv run pytest        # tests (CPU-only, seeded)
+uv run ruff check .  # lint
+uv run mypy          # type-check
 ```
 
-See [CONTRIBUTING.md](https://github.com/davidkhjo/ebm-pytorch/blob/main/CONTRIBUTING.md)
-for the dev workflow and the conventions
-(sign, stop-gradients, no BatchNorm) that contributions should preserve. Design
-notes and the research that informed this library live in `research/`.
+## Citation
 
-## Evaluating log-likelihood
-
-```python
-lower = ebm.ais_log_z(energy, shape=(2,), n_temps=1000, n_chains=256)
-upper = ebm.reverse_ais_log_z(energy, lower.samples, n_temps=1000)
-bits = ebm.log_likelihood(energy, x_test, lower.log_z, dim=2)  # bits/dim
-```
-
-Forward AIS is a stochastic *lower* bound on `log Z`; reverse AIS (run from
-model samples) is a stochastic *upper* bound. When the two agree, trust the
-number; when they don't, increase `n_temps` and check `.ess`.
-
-## Roadmap
-
-PyPI release (trusted-publisher registration pending). The
-[docs site](https://davidkhjo.github.io/ebm-pytorch/) is live.
+If you use ebmkit in your research, please cite it — see [CITATION.cff](https://github.com/davidkhjo/ebmkit/blob/main/CITATION.cff).
 
 ## License
 
-MIT
+MIT — see [LICENSE](https://github.com/davidkhjo/ebmkit/blob/main/LICENSE).

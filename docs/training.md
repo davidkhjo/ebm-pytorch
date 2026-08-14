@@ -33,24 +33,23 @@ constants: `LangevinDynamics(step_size=10.0, noise_scale=0.005,
 grad_clip=0.01, steps=60)`, `ReplayBuffer(10_000, shape, reinit_prob=0.05)`,
 `energy_reg=1.0`, samples clamped to `(-1, 1)`.
 
-!!! warning "The CD loss value is not a convergence signal"
-    `E(x⁺) - E(x⁻)` hovers near zero (and can go negative) at equilibrium.
-    Watch `metrics["energy_gap"]` and energy histograms instead; a training
-    run where the gap diverges to large negative values means the sampler
-    can't keep up with the energy landscape — regularize harder or tether
-    (see below).
+> **The CD loss value is not a convergence signal.** `E(x⁺) - E(x⁻)` hovers
+> near zero (and can go negative) at equilibrium. Watch `metrics["energy_gap"]`
+> and energy histograms instead; a training run where the gap diverges to large
+> negative values means the sampler can't keep up with the energy landscape —
+> regularize harder or tether (see below).
 
 ## Diffusion recovery likelihood
 
 The most stable known EBM training (Gao et al. 2021). Instead of sampling the
 multimodal marginal, sample the *recovery posterior* between adjacent levels
-of a noise ladder \(\sigma_1 > \dots > \sigma_L\):
+of a noise ladder $\sigma_1 > \dots > \sigma_L$:
 
-\[
+$$
 p(x \mid \tilde{x}) \propto \exp\!\big({-E(x, \sigma_{t+1})}
   - \|\tilde{x} - x\|^2 / 2s_t^2\big),
 \qquad s_t^2 = \sigma_t^2 - \sigma_{t+1}^2 .
-\]
+$$
 
 The quadratic tether makes this near-unimodal, so 30 Langevin steps genuinely
 mix. Requires a noise-conditional energy:
@@ -63,19 +62,18 @@ loss_fn = ebm.DiffusionRecoveryLikelihood(sigmas, mcmc_steps=30)
 samples = ebm.drl_sample(net, sigmas, 2000, (2,))
 ```
 
-!!! note "Stable training ≠ cheap generation"
-    DRL's negatives start at the tether point — always *near data* — which is
-    exactly what makes training stable, but it means the generation path from
-    pure noise down the ladder is never exercised during training. On small
-    budgets the trained energy denoises poorly from far off-manifold and
-    `drl_sample` output stays noisy; reaching paper-quality generation takes
-    paper-scale budgets (large nets, 100k+ steps). For a small-budget image
-    demo, use the short-run CD recipe instead (see the MNIST example) — there
-    the training process *is* the generator.
+> **Stable training ≠ cheap generation.** DRL's negatives start at the tether
+> point — always *near data* — which is exactly what makes training stable, but
+> it means the generation path from pure noise down the ladder is never
+> exercised during training. On small budgets the trained energy denoises
+> poorly from far off-manifold and `drl_sample` output stays noisy; reaching
+> paper-quality generation takes paper-scale budgets (large nets, 100k+ steps).
+> For a small-budget image demo, use the short-run CD recipe instead (see the
+> MNIST example) — there the training process *is* the generator.
 
 ## Score matching
 
-No negatives, no MCMC — match \(\nabla_x \log p\) instead. `DenoisingScoreMatching(sigma)`
+No negatives, no MCMC — match $\nabla_x \log p$ instead. `DenoisingScoreMatching(sigma)`
 for a single noise scale; `MultiSigmaDenoisingScoreMatching(sigmas)` is the
 NCSN objective across a ladder (pair it with `AnnealedLangevinDynamics` for
 generation); `SlicedScoreMatching` avoids noise entirely via random
@@ -130,5 +128,5 @@ Load restores *into* a matching trainer (the same load-into-existing pattern as
 `ReplayBuffer` / `EMA`), so build the energy, loss, and buffer the same way
 before calling `load`. A periodic checkpoint pairs naturally with the
 `callback(step, out)` hook — see
-[`examples/checkpoint_resume.py`](https://github.com/davidkhjo/ebm-pytorch/blob/main/examples/checkpoint_resume.py)
+[`examples/checkpoint_resume.py`](https://github.com/davidkhjo/ebmkit/blob/main/examples/checkpoint_resume.py)
 for a runnable save-every-N-steps / resume demo.

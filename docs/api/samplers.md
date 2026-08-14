@@ -1,3 +1,0 @@
-# Samplers
-
-::: ebm.samplers

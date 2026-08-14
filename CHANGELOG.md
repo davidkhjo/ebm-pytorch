@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.12.0 — 2026-08-14
+
+- Renamed the distribution to **`ebmkit`** (`pip install ebmkit`). The import
+  name is unchanged (`import ebm`).
+- Docs simplified: the mkdocs / GitHub Pages site is removed in favor of a
+  cleaner README plus plain-markdown guides in `docs/`.
+- Added a Claude PR-review workflow (`.github/workflows/claude-code-review.yml`).
+
 ## 0.11.4 — 2026-08-14
 
 - Packaging: make the two relative README links (`examples/`, `CONTRIBUTING.md`)

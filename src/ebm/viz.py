@@ -15,7 +15,7 @@ def _require_matplotlib():
         import matplotlib.pyplot as plt
     except ImportError as err:
         raise ImportError(
-            "matplotlib is required for ebm.viz — install with `pip install ebm-pytorch[viz]`"
+            "matplotlib is required for ebm.viz — install with `pip install ebmkit[viz]`"
         ) from err
     return plt
 

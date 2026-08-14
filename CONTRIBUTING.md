@@ -1,4 +1,4 @@
-# Contributing to ebm-pytorch
+# Contributing to ebmkit
 
 Thanks for your interest! This library aims to be **narrow and reliable** — a
 small, well-tested set of energy-based-model primitives — so contributions that
@@ -9,8 +9,8 @@ deepen correctness, clarity, and evaluation are especially welcome.
 The project uses [uv](https://docs.astral.sh/uv/). No manual venv needed:
 
 ```bash
-git clone https://github.com/davidkhjo/ebm-pytorch
-cd ebm-pytorch
+git clone https://github.com/davidkhjo/ebmkit
+cd ebmkit
 uv run pytest            # full test suite (CPU-only, seeded)
 uv run ruff check .      # lint
 uv run ruff format .     # format
@@ -49,10 +49,14 @@ synthetic archives in `tmp_path`); never add a test that hits the network.
 
 1. Branch from `main`.
 2. Keep the change focused; add or update tests.
-3. Ensure `uv run pytest`, `uv run ruff check .`, and `uv run ruff format
-   --check .` are green. If you touch docstrings or the public API, also run
-   `uv run mkdocs build --strict`.
+3. Ensure `uv run pytest`, `uv run ruff check .`, `uv run ruff format --check .`,
+   and `uv run mypy` are green.
 4. Open a PR against `main`. CI runs the suite on Python 3.10–3.13.
+
+Pull requests are also reviewed by Claude (`.github/workflows/claude-code-review.yml`).
+It stays inactive until a maintainer adds the `CLAUDE_CODE_OAUTH_TOKEN` repository
+secret (from `claude setup-token`) and sets the repository variable
+`ENABLE_CLAUDE_REVIEW` to `true`.
 
 ## Adding a loss or sampler
 

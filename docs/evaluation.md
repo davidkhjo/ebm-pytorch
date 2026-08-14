@@ -5,7 +5,7 @@ levels of rigor.
 
 ## Log-likelihood via log-Z bracketing
 
-`ais_log_z` estimates \(\log Z = \log \int e^{-E(x)}\,dx\) by annealed
+`ais_log_z` estimates $\log Z = \log \int e^{-E(x)}\,dx$ by annealed
 importance sampling — a stochastic *lower* bound in expectation.
 `reverse_ais_log_z` runs the same path backwards from model samples and is a
 stochastic *upper* bound. Report both:
@@ -27,11 +27,10 @@ much annealing is missing — increase `n_temps` (many cheap temperatures beat
 few long MCMC runs) and check `result.ess`: an effective sample size near 1
 means a few chains dominate and the estimate is unreliable.
 
-!!! tip "The reverse bound is only as honest as its samples"
-    `reverse_ais_log_z` assumes its inputs are (approximately) model samples —
-    use `ais_log_z(...).samples` or a long MCMC run. Poor samples bias the
-    estimate further *upward*, so the bracket stays conservative rather than
-    falsely tight.
+> **The reverse bound is only as honest as its samples.** `reverse_ais_log_z`
+> assumes its inputs are (approximately) model samples — use
+> `ais_log_z(...).samples` or a long MCMC run. Poor samples bias the estimate
+> further *upward*, so the bracket stays conservative rather than falsely tight.
 
 ## Sample quality: Fréchet distance / FID
 
@@ -45,13 +44,13 @@ Pure torch (float64, eigendecomposition matrix square root — no scipy).
 an Inception embedding gives standard FID. Use a few thousand samples per side
 — small sets bias the covariance term upward.
 
-!!! warning "Fréchet distance only sees two moments"
-    A *blurred* version of the data matches mean and covariance almost
-    perfectly, so FD barely moves. `ebm.eval.mmd(x, y, bandwidth=...)` —
-    unbiased squared MMD with an RBF kernel — sees all moments; pick the
-    bandwidth at the scale of the structure you care about (the default
-    median heuristic is conservative). The [benchmarks](benchmarks.md) page
-    shows a case where FD and MMD genuinely disagree.
+> **Fréchet distance only sees two moments.** A *blurred* version of the data
+> matches mean and covariance almost perfectly, so FD barely moves.
+> `ebm.eval.mmd(x, y, bandwidth=...)` — unbiased squared MMD with an RBF
+> kernel — sees all moments; pick the bandwidth at the scale of the structure
+> you care about (the default median heuristic is conservative). The
+> [benchmarks](benchmarks.md) page shows a case where FD and MMD genuinely
+> disagree.
 
 ## Relative diagnostics
 

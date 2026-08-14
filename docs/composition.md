@@ -14,12 +14,12 @@ sharp    = ebm.TemperedEnergy(e1, temperature=0.5)  # p ∝ p1^2   (T < 1 sharpe
 nested   = ebm.MixtureEnergy(product, sharp)        # compose freely
 ```
 
-- `SumEnergy` — \(E = \sum_i w_i E_i\): the intersection of constraints. Two
+- `SumEnergy` — $E = \sum_i w_i E_i$: the intersection of constraints. Two
   overlapping Gaussians multiply to a tighter Gaussian between them.
-- `MixtureEnergy` — \(E = -\log \sum_i w_i e^{-E_i}\): the union. Exact
+- `MixtureEnergy` — $E = -\log \sum_i w_i e^{-E_i}$: the union. Exact
   log-sum-exp, numerically stable.
-- `TemperedEnergy` — \(E / T\): tempering. A tempered standard Gaussian has
-  std \(\sqrt{T}\) — useful both for sharpening trained models and for
+- `TemperedEnergy` — $E / T$: tempering. A tempered standard Gaussian has
+  std $\sqrt{T}$ — useful both for sharpening trained models and for
   building annealing paths.
 
 All three register component `nn.Module`s, so parameters are visible to

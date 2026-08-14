@@ -1,6 +1,6 @@
 # Examples
 
-The examples live in [`examples/`](https://github.com/davidkhjo/ebm-pytorch/tree/main/examples);
+The examples live in [`examples/`](https://github.com/davidkhjo/ebmkit/tree/main/examples);
 the 2D ones run on CPU in a few minutes, the MNIST ones want MPS/CUDA.
 
 ## Two moons with persistent CD

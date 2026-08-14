@@ -1,6 +1,6 @@
 cff-version: 1.2.0
-message: "If you use ebm-pytorch in your research, please cite it as below."
-title: "ebm-pytorch: training and using energy-based models in PyTorch"
+message: "If you use ebmkit in your research, please cite it as below."
+title: "ebmkit: training and using energy-based models in PyTorch"
 abstract: >-
   A narrow, reliable PyTorch library for energy-based models: contrastive
   divergence and persistent CD, score matching (denoising, sliced, NCSN),
@@ -13,8 +13,8 @@ authors:
   - given-names: David
     email: david@cortify.io
 license: MIT
-repository-code: "https://github.com/davidkhjo/ebm-pytorch"
-url: "https://davidkhjo.github.io/ebm-pytorch/"
+repository-code: "https://github.com/davidkhjo/ebmkit"
+url: "https://davidkhjo.github.io/ebmkit/"
 keywords:
   - energy-based-models
   - ebm

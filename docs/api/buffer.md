@@ -1,3 +1,0 @@
-# Replay buffer
-
-::: ebm.buffer
