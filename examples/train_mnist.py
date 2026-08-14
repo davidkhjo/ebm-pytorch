@@ -8,7 +8,7 @@ chains from uniform noise) — with short-run EBMs, training *is* the sampler,
 which is why this recipe demos well at small budgets. (Diffusion recovery
 likelihood is the stabler *training* objective at scale, but its negatives
 start near data, so learning to generate from pure noise needs paper-scale
-budgets — see docs/training.md.)
+budgets.)
 
 Runs on MPS/CUDA if available (~5 min), CPU works but is slow.
 

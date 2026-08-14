@@ -2,8 +2,7 @@
 
 For each loss family: train on the same data, draw 4000 samples, then score
 with the Fréchet distance, an AIS-bracketed test log-likelihood, and wall
-time. Prints a markdown table (pasted into docs/benchmarks.md) and writes
-benchmark_result.png.
+time. Prints a markdown table and writes benchmark_result.png.
 
 Run:  python examples/benchmark_losses.py   (CPU, ~15 minutes)
 """
