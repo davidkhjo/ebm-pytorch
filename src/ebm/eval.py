@@ -25,6 +25,8 @@ __all__ = [
     "bits_per_dim",
     "effective_sample_size",
     "split_rhat",
+    "precision_recall",
+    "inception_score",
     "AISResult",
 ]
 
@@ -239,6 +241,73 @@ def ood_auroc(energy: EnergyFn, x_in: Tensor, x_out: Tensor) -> float:
     rank_sum_in = ranks[:n_in].sum().item()
     u = rank_sum_in - n_in * (n_in + 1) / 2
     return u / (n_in * n_out)
+
+
+@torch.no_grad()
+def precision_recall(
+    real: Tensor,
+    gen: Tensor,
+    *,
+    k: int = 3,
+    feature_fn=None,
+    batch_size: int = 1024,
+) -> tuple[float, float]:
+    """Improved precision & recall (Kynkäänniemi et al., 2019).
+
+    Estimates each set's manifold as the union of per-point k-NN hyperspheres,
+    then measures overlap: **precision** is the fraction of generated points that
+    land inside the *real* manifold (fidelity), **recall** the fraction of real
+    points inside the *generated* manifold (coverage/diversity). Unlike
+    `frechet_distance`, this separates "are the samples realistic" from "do they
+    cover the data" — a mode-dropping model scores high precision, low recall.
+
+    ``feature_fn`` works exactly as in `frechet_distance` (``None`` compares the
+    flattened samples directly; pass an embedding for image data). Returns
+    ``(precision, recall)`` in ``[0, 1]``. Reference: arXiv:1904.06991.
+    """
+
+    def _features(t: Tensor) -> Tensor:
+        if feature_fn is None:
+            return t.reshape(len(t), -1).cpu().double()
+        chunks = [feature_fn(c).detach().cpu() for c in t.split(batch_size)]
+        return torch.cat(chunks).reshape(len(t), -1).double()
+
+    fr, fg = _features(real), _features(gen)
+    if len(fr) <= k or len(fg) <= k:
+        raise ValueError(f"precision_recall needs more than k={k} samples per set")
+
+    def _knn_radius(f: Tensor) -> Tensor:
+        # Column 0 of the sorted distances is the zero self-distance, so the
+        # k-th neighbor sits at column k.
+        return torch.cdist(f, f).sort(dim=1).values[:, k]
+
+    radius_real = _knn_radius(fr)
+    radius_gen = _knn_radius(fg)
+    # A point is "inside" a manifold if it lies within some reference sphere.
+    precision = (torch.cdist(fg, fr) <= radius_real[None, :]).any(dim=1).double().mean()
+    recall = (torch.cdist(fr, fg) <= radius_gen[None, :]).any(dim=1).double().mean()
+    return float(precision), float(recall)
+
+
+@torch.no_grad()
+def inception_score(probs: Tensor) -> float:
+    """Inception score ``exp(E_x KL(p(y|x) ‖ p(y)))`` from classifier probabilities.
+
+    ``probs`` is an ``(N, K)`` tensor of per-sample class probabilities from *any*
+    classifier you supply — this ships the score's formula only, not a bundled
+    model, so it stays torch-only and works with whatever labels are meaningful
+    for your data. Higher is better: it rewards confident per-sample predictions
+    (sharp ``p(y|x)``) that are diverse in aggregate (near-uniform marginal
+    ``p(y)``). ``IS = K`` for perfectly confident, perfectly balanced classes;
+    ``IS = 1`` when every prediction equals the marginal.
+    """
+    p = probs.double()
+    if p.dim() != 2:
+        raise ValueError("probs must be (N, K) class probabilities")
+    p = p.clamp_min(1e-12)
+    marginal = p.mean(dim=0, keepdim=True)
+    kl = (p * (p.log() - marginal.log())).sum(dim=1)
+    return float(torch.exp(kl.mean()))
 
 
 @torch.no_grad()
