@@ -100,6 +100,24 @@ def test_gaussian_mixture_energy_closed_form():
         ebm.nets.GaussianMixtureEnergy(means, std=0.0)  # bad std
 
 
+def test_banana_energy_closed_form_and_exact_sampler():
+    energy = ebm.nets.BananaEnergy(b=0.5, sigma=(1.0, 1.0))
+    x = torch.tensor([[0.5, 0.3]])
+    warp = 0.3 - 0.5 * (0.25 - 1.0)
+    expected = 0.25 / 2 + warp**2 / 2
+    assert torch.allclose(energy(x), torch.tensor([expected]), atol=1e-5)
+
+    # Exact draws have closed-form variances: Var[x0]=σ0²=1, Var[x1]=b²·2σ0⁴+σ1²=1.5.
+    samples = energy.exact_sample(50000)
+    assert abs(samples[:, 0].var().item() - 1.0) < 0.05
+    assert abs(samples[:, 1].var().item() - 1.5) < 0.06
+
+    with pytest.raises(ValueError):
+        ebm.nets.BananaEnergy(sigma=(0.0, 1.0))
+    with pytest.raises(ValueError):
+        energy(torch.zeros(4, 3))  # must be (B, 2)
+
+
 def test_resnet_energy_shape_and_batch_independence():
     net = ebm.nets.ResNetEnergy(in_channels=1, channels=(16, 32))
     x = torch.randn(4, 1, 16, 16)
