@@ -120,6 +120,19 @@ def test_underdamped_explores_the_funnel():
     assert samples[:, 0].std().item() > 1.0
 
 
+def test_hmc_recovers_the_banana():
+    # The banana has an exact sampler, so we can check the MCMC output directly.
+    energy = ebm.nets.BananaEnergy(b=0.5, sigma=(1.0, 1.0))
+    exact = energy.exact_sample(3000)
+    hmc = ebm.HMC(step_size=0.15, leapfrog_steps=15, steps=200)
+    samples = hmc.sample(energy, torch.randn(3000, 2))
+    # Close to the exact draws, and much closer than an isotropic Gaussian is.
+    to_exact = ebm.eval.mmd(samples, exact)
+    to_normal = ebm.eval.mmd(torch.randn(3000, 2), exact)
+    assert to_exact < 0.002
+    assert to_exact < 0.3 * to_normal
+
+
 def test_preconditioned_langevin_handles_anisotropy():
     # Target N(0, diag(1, 25)): per-dim std should be [1, 5].
     def aniso(x):

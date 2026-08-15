@@ -412,6 +412,41 @@ class GaussianMixtureEnergy(nn.Module):
         return -torch.logsumexp(log_comp, dim=1)
 
 
+class BananaEnergy(nn.Module):
+    """Curved "banana" (twisted-Gaussian) energy ``(B, 2) -> (B,)`` — Haario et al. 1999.
+
+    A Gaussian bent along a parabola:
+    ``E(x) = x₀²/(2σ₀²) + (x₁ - b(x₀² - σ₀²))²/(2σ₁²)``. The strong x₀–x₁ curvature
+    defeats isotropic step sizes, so it is a standard MCMC stress test with a
+    different failure mode from `FunnelEnergy` (varying scale) and
+    `GaussianMixtureEnergy` (barriers). Its unique strength as a test target:
+    exact i.i.d. samples are available in closed form via `exact_sample`, so a
+    sampler's output can be checked directly.
+    """
+
+    def __init__(self, b: float = 0.5, sigma: tuple[float, float] = (1.0, 1.0)):
+        super().__init__()
+        if sigma[0] <= 0 or sigma[1] <= 0:
+            raise ValueError("sigma entries must be positive")
+        self.b = b
+        self.sigma = sigma
+
+    def forward(self, x: Tensor) -> Tensor:
+        if x.dim() != 2 or x.shape[1] != 2:
+            raise ValueError(f"expected (B, 2), got {tuple(x.shape)}")
+        s0, s1 = self.sigma
+        warp = x[:, 1] - self.b * (x[:, 0] ** 2 - s0**2)
+        return x[:, 0] ** 2 / (2 * s0**2) + warp**2 / (2 * s1**2)
+
+    def exact_sample(self, n: int, *, generator: torch.Generator | None = None) -> Tensor:
+        """Exact i.i.d. draws: sample a Gaussian, then bend it along the parabola."""
+        s0, s1 = self.sigma
+        u = torch.randn(n, 2, generator=generator) * torch.tensor([s0, s1])
+        x = u.clone()
+        x[:, 1] = u[:, 1] + self.b * (u[:, 0] ** 2 - s0**2)
+        return x
+
+
 class RBM(nn.Module):
     """Bernoulli–Bernoulli restricted Boltzmann machine as a free-energy ``(B, V) -> (B,)``.
 

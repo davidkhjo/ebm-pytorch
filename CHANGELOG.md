@@ -27,9 +27,11 @@ known distribution, torch-only at runtime.
 - **Goodness-of-fit eval.** `kernel_stein_discrepancy` (Liu et al. 2016 — a
   score-only GoF test / model selector, no partition function) and
   `classifier_two_sample_test` (Lopez-Paz & Oquab 2017).
+- **`nets.BananaEnergy`** — a curved twisted-Gaussian MCMC stress test with an
+  exact sampler (`exact_sample`) for ground-truthed benchmarks.
 - **Examples.** `sampling_hard_targets.py`, `train_rbm.py`,
   `train_energy_discrepancy.py`, `train_ising_pseudolikelihood.py`,
-  `goodness_of_fit.py`.
+  `goodness_of_fit.py`, `benchmark_samplers.py`.
 
 ## 0.12.0 — 2026-08-14
 
