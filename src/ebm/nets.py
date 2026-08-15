@@ -11,7 +11,15 @@ from collections.abc import Sequence
 
 import torch
 from torch import Tensor, nn
+from torch.nn import functional as F
 from torch.nn.utils.parametrizations import spectral_norm
+
+
+def _binary_states(n: int, *, device=None, dtype=torch.float32) -> Tensor:
+    """All ``2^n`` binary vectors as a ``(2^n, n)`` tensor (for exact enumeration)."""
+    idx = torch.arange(2**n, device=device)
+    bits = (idx[:, None] >> torch.arange(n - 1, -1, -1, device=device)[None, :]) & 1
+    return bits.to(dtype)
 
 
 def _maybe_sn(layer: nn.Module, enabled: bool) -> nn.Module:
@@ -335,3 +343,60 @@ class GaussianMixtureEnergy(nn.Module):
         sq = (x[:, None, :] - self.means[None, :, :]).pow(2).sum(dim=2)
         log_comp = self.log_weights[None, :] - sq / (2 * self.std**2)
         return -torch.logsumexp(log_comp, dim=1)
+
+
+class RBM(nn.Module):
+    """Bernoulli–Bernoulli restricted Boltzmann machine as a free-energy ``(B, V) -> (B,)``.
+
+    The joint ``E(v, h) = -bᵀv - cᵀh - hᵀW v`` marginalizes over the hidden
+    units in closed form, giving the free energy this module returns:
+
+    ``F(v) = -bᵀv - Σ_j softplus(c_j + W_j·v)``,  so  ``p(v) ∝ exp(-F(v))``.
+
+    Because ``F`` is a plain energy, it trains with the ordinary
+    `ebm.ContrastiveDivergence` loss — its gradient is exactly the RBM
+    maximum-likelihood gradient — using `ebm.GibbsSampler` for the block-Gibbs
+    negatives. For small models the partition function is available exactly via
+    `log_z`, which makes this the most closed-form-checkable EBM in the library.
+
+    Input/output are binary visible vectors in ``{0, 1}`` of shape ``(B, V)``.
+    """
+
+    def __init__(self, n_visible: int, n_hidden: int):
+        super().__init__()
+        self.n_visible = n_visible
+        self.n_hidden = n_hidden
+        self.W = nn.Parameter(torch.randn(n_hidden, n_visible) * 0.01)
+        self.b = nn.Parameter(torch.zeros(n_visible))
+        self.c = nn.Parameter(torch.zeros(n_hidden))
+
+    def forward(self, v: Tensor) -> Tensor:
+        pre = F.linear(v, self.W, self.c)  # (B, H) = c + v Wᵀ
+        return -(v @ self.b) - F.softplus(pre).sum(dim=1)
+
+    def p_h_given_v(self, v: Tensor) -> Tensor:
+        """Bernoulli means ``p(h_j = 1 | v) = σ(c_j + W_j·v)``, shape ``(B, H)``."""
+        return torch.sigmoid(F.linear(v, self.W, self.c))
+
+    def p_v_given_h(self, h: Tensor) -> Tensor:
+        """Bernoulli means ``p(v_i = 1 | h) = σ(b_i + hᵀW_i)``, shape ``(B, V)``."""
+        return torch.sigmoid(F.linear(h, self.W.t(), self.b))
+
+    @torch.no_grad()
+    def gibbs_step(self, v: Tensor) -> Tensor:
+        """One block-Gibbs transition ``v -> h -> v'`` (both layers sampled)."""
+        h = torch.bernoulli(self.p_h_given_v(v))
+        return torch.bernoulli(self.p_v_given_h(h))
+
+    @torch.no_grad()
+    def log_z(self) -> Tensor:
+        """Exact ``log Z`` by enumerating the smaller layer — feasible for tiny RBMs."""
+        if min(self.n_visible, self.n_hidden) > 20:
+            raise ValueError("exact log_z enumerates 2^min(V,H) states; keep min(V,H) <= 20")
+        if self.n_hidden <= self.n_visible:
+            h = _binary_states(self.n_hidden, device=self.c.device, dtype=self.c.dtype)
+            # Z = Σ_h exp(cᵀh + Σ_i softplus(b_i + (Wᵀh)_i)); marginalize v exactly.
+            term = h @ self.c + F.softplus(F.linear(h, self.W.t(), self.b)).sum(dim=1)
+            return torch.logsumexp(term, dim=0)
+        v = _binary_states(self.n_visible, device=self.b.device, dtype=self.b.dtype)
+        return torch.logsumexp(-self.forward(v), dim=0)
