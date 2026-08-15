@@ -44,7 +44,7 @@ returns `LossOutput(loss, metrics, x_neg)`; call `out.loss.backward()`).
 
 | Piece | Contents |
 |---|---|
-| **Energies** | any callable `(B, *shape) -> (B,)`; `nets.MLPEnergy` / `ConvEnergy` / `ResNetEnergy` / `ConvClassifier` (SiLU, optional spectral norm, no batch norm), `nets.RBM` (Bernoulli RBM with exact `log_z`), `nets.IsingEnergy` / `PottsEnergy` (discrete lattices), `nets.FunnelEnergy` / `GaussianMixtureEnergy` (closed-form targets), noise-conditional variants for NCSN; `EnergyModel`, `ebm.score` |
+| **Energies** | any callable `(B, *shape) -> (B,)`; `nets.MLPEnergy` / `ConvEnergy` / `ResNetEnergy` / `ConvClassifier` (SiLU, optional spectral norm, no batch norm), `nets.RBM` (Bernoulli RBM with exact `log_z`), `nets.IsingEnergy` / `PottsEnergy` (discrete lattices), `nets.FunnelEnergy` / `GaussianMixtureEnergy` / `BananaEnergy` (closed-form targets), noise-conditional variants for NCSN; `EnergyModel`, `ebm.score` |
 | **Samplers** | `LangevinDynamics` (ULA/SGLD), `MALA`, `HMC`, `UnderdampedLangevin` (SGHMC), `PreconditionedLangevin`, `ParallelTempering` (replica exchange), `GibbsSampler` (block Gibbs), `GibbsWithGradients` + `CategoricalGibbsWithGradients`, `AnnealedLangevinDynamics` |
 | **Losses** | `ContrastiveDivergence` (CD-k / persistent CD), `DiffusionRecoveryLikelihood` + `drl_sample`, `DenoisingScoreMatching` / `MultiSigmaDenoisingScoreMatching` (NCSN), `SlicedScoreMatching`, `ExactScoreMatching`, `EnergyDiscrepancy` (MCMC-free), `PseudoLikelihood` / `RatioMatching` (MCMC-free, discrete), `NoiseContrastiveEstimation`, `JEMLoss` |
 | **Composition** | `SumEnergy` (product of experts), `MixtureEnergy`, `TemperedEnergy` — energies compose like densities and nest |
@@ -68,6 +68,7 @@ Runnable scripts in [`examples/`](https://github.com/davidkhjo/ebmkit/tree/main/
 - `train_energy_discrepancy.py` — two-moons trained MCMC-free (energy discrepancy)
 - `sampling_hard_targets.py` — parallel tempering escapes a trapped mode; ESS / R̂ diagnostics
 - `goodness_of_fit.py` — KSD for model selection; classifier two-sample test
+- `benchmark_samplers.py` — rank samplers on the banana against exact draws (ESS, R̂, MMD)
 - `checkpoint_resume.py` — save a run and resume it in a fresh process
 
 ## Conventions
