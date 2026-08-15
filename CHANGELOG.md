@@ -24,8 +24,12 @@ known distribution, torch-only at runtime.
 - **MCMC-free discrete losses.** `PseudoLikelihood` (Besag 1975) and
   `RatioMatching` (Hyvärinen 2007) — train any binary energy (RBM, Ising) from
   single-bit-flip energy differences, no sampler.
+- **Goodness-of-fit eval.** `kernel_stein_discrepancy` (Liu et al. 2016 — a
+  score-only GoF test / model selector, no partition function) and
+  `classifier_two_sample_test` (Lopez-Paz & Oquab 2017).
 - **Examples.** `sampling_hard_targets.py`, `train_rbm.py`,
-  `train_energy_discrepancy.py`, `train_ising_pseudolikelihood.py`.
+  `train_energy_discrepancy.py`, `train_ising_pseudolikelihood.py`,
+  `goodness_of_fit.py`.
 
 ## 0.12.0 — 2026-08-14
 
