@@ -225,10 +225,12 @@ class _ResBlock(nn.Module):
         super().__init__()
         self.act = nn.SiLU()
         self.conv1 = _maybe_sn(nn.Conv2d(c_in, c_out, 3, padding=1), spectral_norm)
-        self.conv2 = _maybe_sn(nn.Conv2d(c_out, c_out, 3, padding=1), spectral_norm)
+        conv2 = nn.Conv2d(c_out, c_out, 3, padding=1)
         if not spectral_norm:  # zero-init is incompatible with the SN parametrization
-            nn.init.zeros_(self.conv2.weight)
-            nn.init.zeros_(self.conv2.bias)
+            nn.init.zeros_(conv2.weight)
+            assert conv2.bias is not None
+            nn.init.zeros_(conv2.bias)
+        self.conv2 = _maybe_sn(conv2, spectral_norm)
         self.skip: nn.Module = (
             nn.Identity() if c_in == c_out else _maybe_sn(nn.Conv2d(c_in, c_out, 1), spectral_norm)
         )
