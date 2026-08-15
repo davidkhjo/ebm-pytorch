@@ -59,6 +59,80 @@ class LangevinDynamics(Sampler):
         return x
 
 
+class UnderdampedLangevin(Sampler):
+    """Underdamped (2nd-order) Langevin / SGHMC — momentum-augmented dynamics.
+
+    Augments the state with a velocity ``v`` and integrates
+
+    ``v ← (1 - εγ) v - ε ∇E(x) + sqrt(2γε) ξ`` ,  ``x ← x + ε v``
+
+    (symplectic Euler of Chen et al., 2014). The stationary distribution is
+    ``exp(-E(x) - ½‖v‖²)``, so the position marginal is exactly ``p ∝ exp(-E)``;
+    the momentum smooths the trajectory and mixes better than overdamped ULA on
+    correlated targets. The velocity is fresh state per ``sample`` call (reset to
+    zero), not carried between runs.
+
+    Args:
+        step_size: ε, the integrator step.
+        friction: γ, the damping (larger → closer to overdamped Langevin).
+        steps: default number of transitions per ``sample`` call.
+    """
+
+    def __init__(self, step_size: float = 0.1, friction: float = 1.0, steps: int = 100):
+        super().__init__(steps)
+        self.step_size = step_size
+        self.friction = friction
+        self._v: Tensor | None = None
+
+    def sample(
+        self,
+        energy: EnergyFn,
+        x_init: Tensor,
+        *,
+        steps: int | None = None,
+        return_trajectory: bool = False,
+    ) -> Tensor:
+        self._v = torch.zeros_like(x_init)  # momentum is per-run state
+        return super().sample(energy, x_init, steps=steps, return_trajectory=return_trajectory)
+
+    def step(self, energy: EnergyFn, x: Tensor) -> Tensor:
+        eps, gamma = self.step_size, self.friction
+        if self._v is None or self._v.shape != x.shape:
+            self._v = torch.zeros_like(x)
+        _, grad = self._energy_grad(energy, x)
+        noise = math.sqrt(2 * gamma * eps) * torch.randn_like(x)
+        v = (1 - eps * gamma) * self._v - eps * grad + noise
+        self._v = v.detach()
+        return x.detach() + eps * v
+
+
+class PreconditionedLangevin(Sampler):
+    """Unadjusted Langevin with a fixed diagonal preconditioner ``M``.
+
+    ``x ← x - ε (M ⊙ ∇E(x)) + sqrt(2ε) sqrt(M) ⊙ ξ``. A constant ``M`` rescales
+    each coordinate's step and noise together, so the chain still targets exactly
+    ``p ∝ exp(-E)`` (no drift-correction term is needed, unlike adaptive
+    preconditioners). Set ``M`` to roughly the target's per-coordinate variance
+    to fix the slow mixing overdamped Langevin suffers on ill-conditioned
+    targets. ``precond`` broadcasts against the data's event shape.
+    """
+
+    def __init__(self, precond: Tensor, step_size: float = 1e-2, steps: int = 100):
+        super().__init__(steps)
+        self.step_size = step_size
+        precond = torch.as_tensor(precond, dtype=torch.float32)
+        if (precond <= 0).any():
+            raise ValueError("preconditioner entries must be positive")
+        self._precond = precond
+
+    def step(self, energy: EnergyFn, x: Tensor) -> Tensor:
+        eps = self.step_size
+        m = self._precond.to(device=x.device, dtype=x.dtype)
+        _, grad = self._energy_grad(energy, x)
+        noise = torch.sqrt(2 * eps * m) * torch.randn_like(x)
+        return x.detach() - eps * (m * grad) + noise
+
+
 class MALA(Sampler):
     """Metropolis-adjusted Langevin: ULA proposals with an accept/reject step.
 

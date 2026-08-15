@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.13.0 — 2026-08-15
+
+Research-feature expansion — every addition validated against a closed-form or
+known distribution, torch-only at runtime.
+
+- **Samplers.** `ParallelTempering` (replica exchange over any base sampler —
+  escapes multimodal traps single-chain Langevin can't), `UnderdampedLangevin`
+  (SGHMC; momentum for better mixing, exact `exp(-E)` position marginal),
+  `PreconditionedLangevin` (fixed diagonal preconditioner for ill-conditioned
+  targets), and `GibbsSampler` (block Gibbs for models with tractable
+  conditionals, e.g. the RBM).
+- **Losses.** `ExactScoreMatching` (Hyvärinen 2005 — the O(D) exact objective
+  the sliced/denoising variants approximate) and `EnergyDiscrepancy` (Schröder
+  et al. 2023 — a sampler-free, score-free objective).
+- **Energies.** `RBM` (Bernoulli RBM as a free energy, with block-Gibbs and an
+  exact `log_z`), `ResNetEnergy` (the IGEBM / Improved-CD residual image net),
+  and the closed-form test targets `FunnelEnergy` (Neal's funnel) and
+  `GaussianMixtureEnergy`.
+- **Eval.** `effective_sample_size` and `split_rhat` (MCMC convergence
+  diagnostics), `precision_recall` (Kynkäänniemi et al. 2019 — fidelity vs
+  coverage), and `inception_score` (formula over user-supplied classifier probs).
+- **Examples.** `sampling_hard_targets.py`, `train_rbm.py`,
+  `train_energy_discrepancy.py`.
+
 ## 0.12.0 — 2026-08-14
 
 - Renamed the distribution to **`ebmkit`** (`pip install ebmkit`). The import

@@ -11,7 +11,15 @@ from collections.abc import Sequence
 
 import torch
 from torch import Tensor, nn
+from torch.nn import functional as F
 from torch.nn.utils.parametrizations import spectral_norm
+
+
+def _binary_states(n: int, *, device=None, dtype=torch.float32) -> Tensor:
+    """All ``2^n`` binary vectors as a ``(2^n, n)`` tensor (for exact enumeration)."""
+    idx = torch.arange(2**n, device=device)
+    bits = (idx[:, None] >> torch.arange(n - 1, -1, -1, device=device)[None, :]) & 1
+    return bits.to(dtype)
 
 
 def _maybe_sn(layer: nn.Module, enabled: bool) -> nn.Module:
@@ -207,6 +215,73 @@ class ConvEnergy(nn.Module):
         return self.head(h).squeeze(-1)
 
 
+class _ResBlock(nn.Module):
+    """Pre-activation residual block; the second conv is zero-initialized so the
+    block is the identity at init (unless spectral norm reparametrizes it)."""
+
+    def __init__(
+        self, c_in: int, c_out: int, *, spectral_norm: bool = False, downsample: bool = False
+    ):
+        super().__init__()
+        self.act = nn.SiLU()
+        self.conv1 = _maybe_sn(nn.Conv2d(c_in, c_out, 3, padding=1), spectral_norm)
+        conv2 = nn.Conv2d(c_out, c_out, 3, padding=1)
+        if not spectral_norm:  # zero-init is incompatible with the SN parametrization
+            nn.init.zeros_(conv2.weight)
+            assert conv2.bias is not None
+            nn.init.zeros_(conv2.bias)
+        self.conv2 = _maybe_sn(conv2, spectral_norm)
+        self.skip: nn.Module = (
+            nn.Identity() if c_in == c_out else _maybe_sn(nn.Conv2d(c_in, c_out, 1), spectral_norm)
+        )
+        self.downsample = downsample
+
+    def forward(self, x: Tensor) -> Tensor:
+        h = self.conv1(self.act(x))
+        h = self.conv2(self.act(h))
+        out = self.skip(x) + h
+        if self.downsample:
+            out = F.avg_pool2d(out, 2)
+        return out
+
+
+class ResNetEnergy(nn.Module):
+    """Residual CNN energy for images ``(B, C, H, W) -> (B,)`` (IGEBM / Improved-CD).
+
+    The standard recipe for image EBMs: a stack of pre-activation residual blocks
+    (SiLU, 3x3 convs, no normalization), average-pool downsampling between
+    stages, global-pool then a linear head. The second conv of each block is
+    zero-initialized so every block starts as the identity — a stable init for
+    the long MCMC chains contrastive divergence needs. ``spectral_norm=True``
+    wraps every conv and the head for Lipschitz control (Du & Mordatch, 2019).
+    Works at any spatial size (the global pool removes the size dependence).
+    """
+
+    def __init__(
+        self,
+        in_channels: int = 3,
+        channels: Sequence[int] = (64, 128, 256),
+        spectral_norm: bool = False,
+    ):
+        super().__init__()
+        self.stem = _maybe_sn(nn.Conv2d(in_channels, channels[0], 3, padding=1), spectral_norm)
+        blocks: list[nn.Module] = []
+        c_in = channels[0]
+        for c_out in channels:
+            blocks.append(_ResBlock(c_in, c_out, spectral_norm=spectral_norm, downsample=True))
+            c_in = c_out
+        self.blocks = nn.ModuleList(blocks)
+        self.act = nn.SiLU()
+        self.head = _maybe_sn(nn.Linear(c_in, 1), spectral_norm)
+
+    def forward(self, x: Tensor) -> Tensor:
+        h = self.stem(x)
+        for block in self.blocks:
+            h = block(h)
+        h = self.act(h).mean(dim=(2, 3))  # global average pool
+        return self.head(h).squeeze(-1)
+
+
 class IsingEnergy(nn.Module):
     """2D nearest-neighbor Ising lattice energy for binary data ``(B, H, W) -> (B,)``.
 
@@ -263,3 +338,132 @@ class PottsEnergy(nn.Module):
         right = (x[:, :, :-1, :] * x[:, :, 1:, :]).sum(dim=(1, 2, 3))
         down = (x[:, :-1, :, :] * x[:, 1:, :, :]).sum(dim=(1, 2, 3))
         return -self.coupling * (right + down)
+
+
+class FunnelEnergy(nn.Module):
+    """Neal's funnel — the canonical MCMC stress test, as an energy ``(B, D) -> (B,)``.
+
+    Coordinate 0 is the log-scale ``v ~ N(0, v_scale²)``; the remaining
+    ``n = D - 1`` "neck" coordinates are ``x_i | v ~ N(0, e^v)``. The negative
+    log density (up to a constant) is
+
+    ``E(x) = ½[ v² / v_scale² + e^{-v} ‖x_neck‖² + n·v ]``.
+
+    The geometry is deliberately vicious: at negative ``v`` the neck collapses to
+    a needle no fixed step size can navigate, so single-scale samplers fail and
+    the true marginals (``v ~ N(0, v_scale²)``, ``x_i | v ~ N(0, e^v)``) are the
+    ground truth to check against. Differentiable, so it drives any gradient
+    sampler. Reference: Neal (2003), "Slice Sampling".
+    """
+
+    def __init__(self, dim: int = 2, v_scale: float = 3.0):
+        super().__init__()
+        if dim < 2:
+            raise ValueError("funnel needs dim >= 2 (one scale coordinate + a neck)")
+        if v_scale <= 0:
+            raise ValueError("v_scale must be positive")
+        self.dim = dim
+        self.v_scale = v_scale
+
+    def forward(self, x: Tensor) -> Tensor:
+        if x.dim() != 2 or x.shape[1] != self.dim:
+            raise ValueError(f"expected (B, {self.dim}), got {tuple(x.shape)}")
+        v = x[:, 0]
+        neck = x[:, 1:]
+        n = neck.shape[1]
+        neck_sq = neck.pow(2).sum(dim=1)
+        return 0.5 * (v.pow(2) / self.v_scale**2 + torch.exp(-v) * neck_sq + n * v)
+
+
+class GaussianMixtureEnergy(nn.Module):
+    """Isotropic Gaussian-mixture energy with known modes ``(B, D) -> (B,)``.
+
+    ``E(x) = -logsumexp_k( log w_k - ‖x - μ_k‖² / (2 σ²) )`` — the (unnormalized)
+    energy of ``p(x) ∝ Σ_k w_k N(x; μ_k, σ² I)``. A closed-form multimodal target:
+    with well-separated means and equal weights, a correct sampler must visit the
+    modes in proportion to ``w_k``, which single-chain gradient MCMC cannot do
+    across high barriers — exactly what `ParallelTempering` is for.
+    """
+
+    means: Tensor
+    log_weights: Tensor
+
+    def __init__(self, means: Tensor, weights: Sequence[float] | None = None, std: float = 1.0):
+        super().__init__()
+        means = torch.as_tensor(means, dtype=torch.float32)
+        if means.dim() != 2:
+            raise ValueError("means must be (K, D)")
+        if std <= 0:
+            raise ValueError("std must be positive")
+        k = means.shape[0]
+        if weights is None:
+            weights = [1.0] * k
+        if len(weights) != k or any(w <= 0 for w in weights):
+            raise ValueError("need one positive weight per mode")
+        self.std = std
+        self.register_buffer("means", means)
+        self.register_buffer("log_weights", torch.log(torch.tensor([float(w) for w in weights])))
+
+    def forward(self, x: Tensor) -> Tensor:
+        if x.dim() != 2 or x.shape[1] != self.means.shape[1]:
+            raise ValueError(f"expected (B, {self.means.shape[1]}), got {tuple(x.shape)}")
+        sq = (x[:, None, :] - self.means[None, :, :]).pow(2).sum(dim=2)
+        log_comp = self.log_weights[None, :] - sq / (2 * self.std**2)
+        return -torch.logsumexp(log_comp, dim=1)
+
+
+class RBM(nn.Module):
+    """Bernoulli–Bernoulli restricted Boltzmann machine as a free-energy ``(B, V) -> (B,)``.
+
+    The joint ``E(v, h) = -bᵀv - cᵀh - hᵀW v`` marginalizes over the hidden
+    units in closed form, giving the free energy this module returns:
+
+    ``F(v) = -bᵀv - Σ_j softplus(c_j + W_j·v)``,  so  ``p(v) ∝ exp(-F(v))``.
+
+    Because ``F`` is a plain energy, it trains with the ordinary
+    `ebm.ContrastiveDivergence` loss — its gradient is exactly the RBM
+    maximum-likelihood gradient — using `ebm.GibbsSampler` for the block-Gibbs
+    negatives. For small models the partition function is available exactly via
+    `log_z`, which makes this the most closed-form-checkable EBM in the library.
+
+    Input/output are binary visible vectors in ``{0, 1}`` of shape ``(B, V)``.
+    """
+
+    def __init__(self, n_visible: int, n_hidden: int):
+        super().__init__()
+        self.n_visible = n_visible
+        self.n_hidden = n_hidden
+        self.W = nn.Parameter(torch.randn(n_hidden, n_visible) * 0.01)
+        self.b = nn.Parameter(torch.zeros(n_visible))
+        self.c = nn.Parameter(torch.zeros(n_hidden))
+
+    def forward(self, v: Tensor) -> Tensor:
+        pre = F.linear(v, self.W, self.c)  # (B, H) = c + v Wᵀ
+        return -(v @ self.b) - F.softplus(pre).sum(dim=1)
+
+    def p_h_given_v(self, v: Tensor) -> Tensor:
+        """Bernoulli means ``p(h_j = 1 | v) = σ(c_j + W_j·v)``, shape ``(B, H)``."""
+        return torch.sigmoid(F.linear(v, self.W, self.c))
+
+    def p_v_given_h(self, h: Tensor) -> Tensor:
+        """Bernoulli means ``p(v_i = 1 | h) = σ(b_i + hᵀW_i)``, shape ``(B, V)``."""
+        return torch.sigmoid(F.linear(h, self.W.t(), self.b))
+
+    @torch.no_grad()
+    def gibbs_step(self, v: Tensor) -> Tensor:
+        """One block-Gibbs transition ``v -> h -> v'`` (both layers sampled)."""
+        h = torch.bernoulli(self.p_h_given_v(v))
+        return torch.bernoulli(self.p_v_given_h(h))
+
+    @torch.no_grad()
+    def log_z(self) -> Tensor:
+        """Exact ``log Z`` by enumerating the smaller layer — feasible for tiny RBMs."""
+        if min(self.n_visible, self.n_hidden) > 20:
+            raise ValueError("exact log_z enumerates 2^min(V,H) states; keep min(V,H) <= 20")
+        if self.n_hidden <= self.n_visible:
+            h = _binary_states(self.n_hidden, device=self.c.device, dtype=self.c.dtype)
+            # Z = Σ_h exp(cᵀh + Σ_i softplus(b_i + (Wᵀh)_i)); marginalize v exactly.
+            term = h @ self.c + F.softplus(F.linear(h, self.W.t(), self.b)).sum(dim=1)
+            return torch.logsumexp(term, dim=0)
+        v = _binary_states(self.n_visible, device=self.b.device, dtype=self.b.dtype)
+        return torch.logsumexp(-self.forward(v), dim=0)

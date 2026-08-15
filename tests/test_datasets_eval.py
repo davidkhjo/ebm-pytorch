@@ -1,9 +1,89 @@
 import math
 
+import pytest
 import torch
 
 import ebm
 from tests.conftest import quadratic_energy
+
+
+def _ar1(m, n, rho):
+    """M chains of a stationary AR(1): x_t = ρ x_{t-1} + sqrt(1-ρ²) ε, var ≈ 1."""
+    eps = torch.randn(m, n)
+    x = torch.empty(m, n)
+    x[:, 0] = eps[:, 0]
+    s = math.sqrt(1 - rho**2)
+    for t in range(1, n):
+        x[:, t] = rho * x[:, t - 1] + s * eps[:, t]
+    return x
+
+
+def test_split_rhat_iid_near_one_and_flags_nonmixing():
+    iid = torch.randn(8, 2000, 3)
+    rhat = ebm.eval.split_rhat(iid)
+    assert rhat.shape == (3,)
+    assert (rhat < 1.02).all()
+
+    # Chains parked at different means never mixed → R̂ ≫ 1.
+    offsets = torch.arange(8).reshape(8, 1, 1).double()
+    stuck = 0.01 * torch.randn(8, 2000, 1) + offsets
+    assert ebm.eval.split_rhat(stuck).item() > 5.0
+
+
+def test_ess_iid_recovers_full_count():
+    iid = torch.randn(8, 2000, 2)
+    ess = ebm.eval.effective_sample_size(iid)
+    assert ess.shape == (2,)
+    # Independent draws: ESS ≈ M·N = 16000.
+    assert (ess > 0.85 * 16000).all() and (ess < 1.15 * 16000).all()
+
+
+@pytest.mark.parametrize("rho", [0.5, 0.8])
+def test_ess_matches_ar1_closed_form(rho):
+    m, n = 8, 4000
+    x = _ar1(m, n, rho)
+    ess = ebm.eval.effective_sample_size(x).item()
+    predicted = m * n * (1 - rho) / (1 + rho)  # N(1-ρ)/(1+ρ) per chain
+    assert abs(ess - predicted) / predicted < 0.2
+
+
+def test_diagnostics_reject_too_short():
+    with pytest.raises(ValueError):
+        ebm.eval.effective_sample_size(torch.randn(4, 3, 2))
+
+
+def test_precision_recall_limits():
+    # Two draws from the same distribution → both metrics near 1.
+    p, r = ebm.eval.precision_recall(torch.randn(2000, 2), torch.randn(2000, 2))
+    assert p > 0.9 and r > 0.9
+
+    # Disjoint supports → both near 0.
+    p, r = ebm.eval.precision_recall(torch.randn(1500, 2), torch.randn(1500, 2) + 20.0)
+    assert p < 0.05 and r < 0.05
+
+    with pytest.raises(ValueError):
+        ebm.eval.precision_recall(torch.randn(3, 2), torch.randn(3, 2), k=3)
+
+
+def test_precision_recall_detects_mode_drop():
+    # Real data has two modes; the generator only covers one.
+    left = torch.randn(1000, 2) - torch.tensor([6.0, 0.0])
+    right = torch.randn(1000, 2) + torch.tensor([6.0, 0.0])
+    real = torch.cat([left, right])
+    gen = torch.randn(2000, 2) + torch.tensor([6.0, 0.0])
+    p, r = ebm.eval.precision_recall(real, gen)
+    assert p > 0.8  # generated samples are realistic (inside the real manifold)
+    assert r < 0.65  # but cover only ~half the data (one dropped mode)
+
+
+def test_inception_score_bounds():
+    k = 5
+    confident = torch.eye(k)[torch.arange(1000) % k]  # sharp and class-balanced
+    assert abs(ebm.eval.inception_score(confident) - k) < 1e-3
+    uniform = torch.full((1000, k), 1.0 / k)  # every prediction is the marginal
+    assert abs(ebm.eval.inception_score(uniform) - 1.0) < 1e-3
+    with pytest.raises(ValueError):
+        ebm.eval.inception_score(torch.rand(10))  # not (N, K)
 
 
 def test_bits_per_dim_matches_gaussian_closed_form():

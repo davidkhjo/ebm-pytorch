@@ -14,6 +14,8 @@ from ebm.losses import (
     ContrastiveDivergence,
     DenoisingScoreMatching,
     DiffusionRecoveryLikelihood,
+    EnergyDiscrepancy,
+    ExactScoreMatching,
     LossOutput,
     MultiSigmaDenoisingScoreMatching,
     NoiseContrastiveEstimation,
@@ -26,14 +28,18 @@ from ebm.samplers import (
     MALA,
     AnnealedLangevinDynamics,
     CategoricalGibbsWithGradients,
+    GibbsSampler,
     GibbsWithGradients,
     LangevinDynamics,
+    ParallelTempering,
+    PreconditionedLangevin,
     Sampler,
+    UnderdampedLangevin,
 )
 from ebm.training import Trainer
 from ebm.utils import EMA
 
-__version__ = "0.12.0"
+__version__ = "0.13.0"
 
 __all__ = [
     "EnergyFn",
@@ -49,16 +55,22 @@ __all__ = [
     "Sampler",
     "LangevinDynamics",
     "MALA",
+    "UnderdampedLangevin",
+    "PreconditionedLangevin",
     "HMC",
     "GibbsWithGradients",
     "CategoricalGibbsWithGradients",
+    "GibbsSampler",
     "AnnealedLangevinDynamics",
+    "ParallelTempering",
     "ReplayBuffer",
     "LossOutput",
     "ContrastiveDivergence",
     "DenoisingScoreMatching",
     "DiffusionRecoveryLikelihood",
     "drl_sample",
+    "EnergyDiscrepancy",
+    "ExactScoreMatching",
     "MultiSigmaDenoisingScoreMatching",
     "SlicedScoreMatching",
     "NoiseContrastiveEstimation",

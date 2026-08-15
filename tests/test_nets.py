@@ -4,7 +4,7 @@ import pytest
 import torch
 
 import ebm
-from ebm.nets import _GaussianFourierFeatures
+from ebm.nets import _GaussianFourierFeatures, _ResBlock
 
 
 def test_energy_net_output_shapes():
@@ -58,3 +58,67 @@ def test_gaussian_fourier_features_shape_and_even_dim():
     assert out.shape == (5, 16)
     with pytest.raises(ValueError):
         _GaussianFourierFeatures(embed_dim=15)  # must be even
+
+
+def test_funnel_energy_closed_form():
+    # E(x) = 0.5 * (v^2 / v_scale^2 + e^{-v} ||neck||^2 + n * v).
+    energy = ebm.nets.FunnelEnergy(dim=3, v_scale=3.0)
+    x = torch.tensor([[0.0, 1.0, 2.0], [1.5, -1.0, 0.0]])
+    v = x[:, 0]
+    neck_sq = x[:, 1:].pow(2).sum(dim=1)
+    expected = 0.5 * (v.pow(2) / 9.0 + torch.exp(-v) * neck_sq + 2 * v)
+    assert torch.allclose(energy(x), expected)
+
+    # At the origin only the v-quadratic survives (e^0 * 0 + 0); here E = 0.
+    assert torch.allclose(energy(torch.zeros(1, 3)), torch.zeros(1))
+    with pytest.raises(ValueError):
+        ebm.nets.FunnelEnergy(dim=1)  # needs a neck
+    with pytest.raises(ValueError):
+        energy(torch.zeros(4, 2))  # wrong width
+
+
+def test_gaussian_mixture_energy_closed_form():
+    means = torch.tensor([[-4.0, 0.0], [4.0, 0.0]])
+    energy = ebm.nets.GaussianMixtureEnergy(means, std=0.5)
+
+    # Deep inside one well-separated mode the other component is negligible, so
+    # E(x) ≈ ||x - μ||^2 / (2σ²) - log(w) with equal unit weights (log 1 = 0).
+    x = torch.tensor([[-4.3, 0.2]])
+    near = ((x - means[0]).pow(2).sum() / (2 * 0.5**2)).reshape(1)
+    assert torch.allclose(
+        energy(x),
+        -torch.logsumexp(
+            torch.tensor([-near.item(), -(((x - means[1]).pow(2).sum()) / (2 * 0.5**2)).item()]), 0
+        ).reshape(1),
+    )
+
+    # Symmetric target: energy at mirrored points is equal.
+    assert torch.allclose(energy(torch.tensor([[-4.0, 0.0]])), energy(torch.tensor([[4.0, 0.0]])))
+    with pytest.raises(ValueError):
+        ebm.nets.GaussianMixtureEnergy(means, weights=[1.0], std=1.0)  # weight count
+    with pytest.raises(ValueError):
+        ebm.nets.GaussianMixtureEnergy(means, std=0.0)  # bad std
+
+
+def test_resnet_energy_shape_and_batch_independence():
+    net = ebm.nets.ResNetEnergy(in_channels=1, channels=(16, 32))
+    x = torch.randn(4, 1, 16, 16)
+    out = net(x)
+    assert out.shape == (4,)
+    # No normalization across the batch: a sample's energy is independent of the rest.
+    assert torch.allclose(out[2], net(x[2:3])[0], atol=1e-6)
+
+
+def test_resnet_block_is_identity_at_init():
+    # Zero-initialized second conv + identity skip → the block is the identity.
+    block = _ResBlock(8, 8, spectral_norm=False, downsample=False)
+    y = torch.randn(2, 8, 12, 12)
+    assert torch.allclose(block(y), y, atol=1e-6)
+
+
+def test_resnet_energy_spectral_norm_trains():
+    net = ebm.nets.ResNetEnergy(in_channels=3, channels=(16, 32), spectral_norm=True)
+    out = net(torch.randn(2, 3, 32, 32))
+    assert out.shape == (2,)
+    out.sum().backward()
+    assert all(p.grad is not None for p in net.parameters() if p.requires_grad)
