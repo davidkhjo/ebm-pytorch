@@ -100,3 +100,36 @@ def test_parallel_tempering_validates_ladder():
         ebm.ParallelTempering(ebm.LangevinDynamics(), temperatures=(4.0, 1.0))  # not ascending
     with pytest.raises(ValueError):
         ebm.ParallelTempering(ebm.LangevinDynamics(), temperatures=(1.0,))  # need >= 2
+
+
+def test_underdamped_targets_standard_normal_and_resets_momentum():
+    sampler = ebm.UnderdampedLangevin(step_size=0.1, friction=1.0, steps=300)
+    samples = sampler.sample(quadratic_energy, 3 * torch.randn(4000, 2))
+    _check_standard_normal(samples)
+    assert not samples.requires_grad
+    # A second run must not inherit stale velocity — still exactly N(0, I).
+    again = sampler.sample(quadratic_energy, 3 * torch.randn(4000, 2))
+    _check_standard_normal(again)
+
+
+def test_underdamped_explores_the_funnel():
+    sampler = ebm.UnderdampedLangevin(step_size=0.1, friction=1.0, steps=300)
+    samples = sampler.sample(ebm.nets.FunnelEnergy(dim=2, v_scale=3.0), torch.randn(4000, 2))
+    assert torch.isfinite(samples).all()
+    # The scale coordinate spreads out (a trapped chain would collapse it).
+    assert samples[:, 0].std().item() > 1.0
+
+
+def test_preconditioned_langevin_handles_anisotropy():
+    # Target N(0, diag(1, 25)): per-dim std should be [1, 5].
+    def aniso(x):
+        return 0.5 * (x[:, 0] ** 2 / 1.0 + x[:, 1] ** 2 / 25.0)
+
+    sampler = ebm.PreconditionedLangevin(
+        precond=torch.tensor([1.0, 25.0]), step_size=0.05, steps=500
+    )
+    std = sampler.sample(aniso, torch.randn(6000, 2)).std(dim=0)
+    assert abs(std[0].item() - 1.0) < 0.2
+    assert abs(std[1].item() - 5.0) < 0.8
+    with pytest.raises(ValueError):
+        ebm.PreconditionedLangevin(precond=torch.tensor([1.0, -1.0]))
