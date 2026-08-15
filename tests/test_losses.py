@@ -77,6 +77,48 @@ def test_ssm_backward_flows():
     assert all(g is not None for g in grads)
 
 
+class _FreeQuadratic(nn.Module):
+    """E(x) = ½ xᵀ M x with a full symmetric learnable M (recovers A = Σ⁻¹)."""
+
+    def __init__(self, d):
+        super().__init__()
+        self.P = nn.Parameter(0.1 * torch.randn(d, d) + torch.eye(d))
+
+    def matrix(self):
+        return (self.P + self.P.t()) / 2
+
+    def forward(self, x):
+        return 0.5 * ((x @ self.matrix()) * x).sum(dim=1)
+
+
+def test_exact_score_matching_recovers_precision_matrix():
+    # Data N(0, Σ): the exact-SM optimum for E = ½xᵀMx is M = Σ⁻¹ = A_true.
+    d = 3
+    a_true = torch.tensor([[2.0, 0.5, 0.0], [0.5, 1.5, 0.3], [0.0, 0.3, 1.0]])
+    chol = torch.linalg.cholesky(torch.linalg.inv(a_true))
+    data = torch.randn(4000, d) @ chol.t()
+
+    energy = _FreeQuadratic(d)
+    esm = ebm.ExactScoreMatching()
+    opt = torch.optim.Adam(energy.parameters(), lr=0.02)
+    for _ in range(1500):
+        idx = torch.randint(0, len(data), (512,))
+        loss = esm(energy, data[idx]).loss
+        opt.zero_grad()
+        loss.backward()
+        opt.step()
+    assert (energy.matrix().detach() - a_true).abs().max().item() < 0.1
+
+
+def test_exact_score_matching_agrees_with_sliced_on_a_gaussian():
+    # ESM is the exact objective SSM estimates; their values match in expectation.
+    x = torch.randn(2000, 3)
+    energy = ScaledQuadratic(1.3)
+    exact = ebm.ExactScoreMatching()(energy, x).loss.item()
+    sliced = ebm.SlicedScoreMatching(n_projections=50, vr=True)(energy, x).loss.item()
+    assert abs(exact - sliced) < 0.1
+
+
 def test_nce_log_z_learns():
     net = ScaledQuadratic(1.0)
     loss_fn = ebm.NoiseContrastiveEstimation()
