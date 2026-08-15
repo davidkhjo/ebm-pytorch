@@ -52,6 +52,40 @@ def test_diagnostics_reject_too_short():
         ebm.eval.effective_sample_size(torch.randn(4, 3, 2))
 
 
+def test_precision_recall_limits():
+    # Two draws from the same distribution → both metrics near 1.
+    p, r = ebm.eval.precision_recall(torch.randn(2000, 2), torch.randn(2000, 2))
+    assert p > 0.9 and r > 0.9
+
+    # Disjoint supports → both near 0.
+    p, r = ebm.eval.precision_recall(torch.randn(1500, 2), torch.randn(1500, 2) + 20.0)
+    assert p < 0.05 and r < 0.05
+
+    with pytest.raises(ValueError):
+        ebm.eval.precision_recall(torch.randn(3, 2), torch.randn(3, 2), k=3)
+
+
+def test_precision_recall_detects_mode_drop():
+    # Real data has two modes; the generator only covers one.
+    left = torch.randn(1000, 2) - torch.tensor([6.0, 0.0])
+    right = torch.randn(1000, 2) + torch.tensor([6.0, 0.0])
+    real = torch.cat([left, right])
+    gen = torch.randn(2000, 2) + torch.tensor([6.0, 0.0])
+    p, r = ebm.eval.precision_recall(real, gen)
+    assert p > 0.8  # generated samples are realistic (inside the real manifold)
+    assert r < 0.65  # but cover only ~half the data (one dropped mode)
+
+
+def test_inception_score_bounds():
+    k = 5
+    confident = torch.eye(k)[torch.arange(1000) % k]  # sharp and class-balanced
+    assert abs(ebm.eval.inception_score(confident) - k) < 1e-3
+    uniform = torch.full((1000, k), 1.0 / k)  # every prediction is the marginal
+    assert abs(ebm.eval.inception_score(uniform) - 1.0) < 1e-3
+    with pytest.raises(ValueError):
+        ebm.eval.inception_score(torch.rand(10))  # not (N, K)
+
+
 def test_bits_per_dim_matches_gaussian_closed_form():
     # Standard normal: E(x)=||x||^2/2, log Z = (D/2) log(2 pi).
     d = 5
