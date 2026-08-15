@@ -162,6 +162,71 @@ def test_energy_discrepancy_shapes_and_validation():
             ebm.EnergyDiscrepancy(**bad)
 
 
+def _train_rbm_marginals(loss_fn, q, steps=1500):
+    rbm = ebm.nets.RBM(len(q), 8)
+    opt = torch.optim.Adam(rbm.parameters(), lr=0.05)
+    for _ in range(steps):
+        v = torch.bernoulli(q.expand(256, len(q)))
+        loss = loss_fn(rbm, v).loss
+        opt.zero_grad()
+        loss.backward()
+        opt.step()
+    samples = torch.bernoulli(torch.full((20000, len(q)), 0.5))
+    for _ in range(300):
+        samples = rbm.gibbs_step(samples)
+    return samples.mean(0)
+
+
+def test_pseudolikelihood_recovers_independent_bernoulli():
+    q = torch.tensor([0.2, 0.5, 0.8, 0.35])
+    marginals = _train_rbm_marginals(ebm.PseudoLikelihood(), q)
+    assert (marginals - q).abs().max().item() < 0.05
+
+
+def test_ratio_matching_recovers_independent_bernoulli():
+    q = torch.tensor([0.2, 0.5, 0.8, 0.35])
+    marginals = _train_rbm_marginals(ebm.RatioMatching(), q)
+    assert (marginals - q).abs().max().item() < 0.05
+
+
+def test_pseudolikelihood_recovers_tiny_rbm_pmf():
+    # Data from two noisy 3-bit prototypes; PL must recover the full pmf, which
+    # we read off exactly via softmax(-F) (i.e. using the exact log Z).
+    import itertools
+
+    protos = torch.tensor([[1.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
+    idx = torch.randint(0, 2, (4000,))
+    flip = (torch.rand(4000, 3) < 0.1).float()
+    data = (protos[idx] - flip).abs()
+
+    rbm = ebm.nets.RBM(3, 6)
+    opt = torch.optim.Adam(rbm.parameters(), lr=0.05)
+    for _ in range(2000):
+        v = data[torch.randint(0, len(data), (256,))]
+        loss = ebm.PseudoLikelihood()(rbm, v).loss
+        opt.zero_grad()
+        loss.backward()
+        opt.step()
+
+    states = torch.tensor(list(itertools.product([0.0, 1.0], repeat=3)))
+    model_pmf = torch.softmax(-rbm(states), dim=0)
+    codes = (data @ torch.tensor([4.0, 2.0, 1.0])).long()
+    data_pmf = torch.bincount(codes, minlength=8).float()
+    data_pmf /= data_pmf.sum()
+    assert (model_pmf - data_pmf).abs().max().item() < 0.05
+
+
+def test_discrete_losses_are_mcmc_free_and_flow_gradients():
+    rbm = ebm.nets.RBM(4, 6)
+    v = torch.bernoulli(torch.full((16, 4), 0.5))
+    for loss_fn in (ebm.PseudoLikelihood(), ebm.RatioMatching()):
+        out = loss_fn(rbm, v)
+        assert out.x_neg is None  # no negatives — nothing was sampled
+        out.loss.backward()
+        assert all(p.grad is not None for p in rbm.parameters())
+        rbm.zero_grad()
+
+
 def test_nce_log_z_learns():
     net = ScaledQuadratic(1.0)
     loss_fn = ebm.NoiseContrastiveEstimation()
