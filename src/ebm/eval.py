@@ -23,8 +23,106 @@ __all__ = [
     "reverse_ais_log_z",
     "log_likelihood",
     "bits_per_dim",
+    "effective_sample_size",
+    "split_rhat",
     "AISResult",
 ]
+
+
+def _as_chains(samples: Tensor) -> Tensor:
+    """Coerce MCMC output to ``(n_chains, n_samples, dim)`` in float64."""
+    x = samples.detach().cpu().double()
+    if x.dim() == 2:
+        x = x.unsqueeze(-1)  # (M, N) -> a single scalar quantity per draw
+    if x.dim() != 3:
+        raise ValueError("samples must be (n_chains, n_samples) or (n_chains, n_samples, dim)")
+    if x.shape[1] < 4:
+        raise ValueError("need at least 4 samples per chain for a meaningful diagnostic")
+    return x
+
+
+@torch.no_grad()
+def split_rhat(samples: Tensor) -> Tensor:
+    """Split-R̂ (Gelman–Rubin) convergence diagnostic, per dimension.
+
+    Input is ``(n_chains, n_samples[, dim])``. Each chain is split in half (so a
+    single long chain still exposes non-stationarity), then
+
+    ``R̂ = sqrt(v̂⁺ / W)``,  ``v̂⁺ = (N-1)/N · W + B/N``
+
+    with ``W`` the mean within-chain variance and ``B`` the between-chain
+    variance of the half-chains. Values near ``1.0`` indicate the chains have
+    mixed; ``> 1.01`` is the usual "not converged" flag. Returns a ``(dim,)``
+    tensor. Reference: Vehtari et al. (2021), BDA3.
+    """
+    x = _as_chains(samples)
+    m, n, d = x.shape
+    half = n // 2
+    if half < 2:
+        raise ValueError("need at least 4 samples per chain to split and estimate variance")
+    split = torch.cat([x[:, :half], x[:, half : 2 * half]], dim=0)  # (2M, half, d)
+    means = split.mean(dim=1)  # (2M, d)
+    within = split.var(dim=1, unbiased=True).mean(dim=0)  # (d,)
+    between = half * means.var(dim=0, unbiased=True)  # (d,)
+    var_plus = (half - 1) / half * within + between / half
+    return torch.sqrt(var_plus / within)
+
+
+@torch.no_grad()
+def effective_sample_size(samples: Tensor) -> Tensor:
+    """Effective sample size of an MCMC run, per dimension.
+
+    Input is ``(n_chains, n_samples[, dim])``. Combines the within-chain
+    autocorrelation with the between-chain variance (Stan/BDA3 estimator) and
+    truncates the autocorrelation sum with Geyer's initial-monotone rule:
+
+    ``ESS = M·N / (1 + 2 Σ_t ρ̂_t)``.
+
+    For independent draws ``ESS → M·N``; a stuck or slowly-mixing chain gives an
+    ESS far below the raw draw count. Autocovariances are computed by FFT
+    (zero-padded past ``2N`` to avoid circular wraparound), no scipy. Returns a
+    ``(dim,)`` tensor.
+    """
+    x = _as_chains(samples)
+    m, n, d = x.shape
+
+    centered = x - x.mean(dim=1, keepdim=True)
+    n_fft = 1
+    while n_fft < 2 * n:
+        n_fft <<= 1
+    spec = torch.fft.rfft(centered, n=n_fft, dim=1)
+    acov = torch.fft.irfft(spec.abs().pow(2), n=n_fft, dim=1)[:, :n, :]  # (M, N, d)
+    acov = acov / n * (n / (n - 1))  # unbiased so acov[:,0] == per-chain variance
+
+    within = acov[:, 0, :].mean(dim=0)  # (d,)  == W
+    if m > 1:
+        between = n * x.mean(dim=1).var(dim=0, unbiased=True)  # (d,)
+    else:
+        between = torch.zeros(d, dtype=x.dtype)
+    var_plus = (n - 1) / n * within + between / n
+    mean_acov = acov.mean(dim=0)  # (N, d)
+    rho = 1 - (within[None, :] - mean_acov) / var_plus[None, :]  # (N, d)
+
+    ess = torch.empty(d, dtype=x.dtype)
+    for j in range(d):
+        r = rho[:, j]
+        # Geyer initial-monotone sequence: pair Γ_k = ρ_{2k} + ρ_{2k+1}, sum
+        # while positive, forcing the pairs to be non-increasing. Then
+        # τ = -1 + 2 Σ Γ_k  (== 1 + 2 Σ_{t≥1} ρ_t untruncated).
+        gamma_sum = 0.0
+        prev_gamma = float("inf")
+        k = 0
+        while 2 * k + 1 < n:
+            gamma = float(r[2 * k] + r[2 * k + 1])
+            gamma = min(gamma, prev_gamma)  # enforce non-increasing pairs
+            if gamma <= 0:
+                break
+            gamma_sum += gamma
+            prev_gamma = gamma
+            k += 1
+        tau = -1.0 + 2.0 * gamma_sum
+        ess[j] = m * n / max(tau, 1e-12)
+    return ess
 
 
 @torch.no_grad()
