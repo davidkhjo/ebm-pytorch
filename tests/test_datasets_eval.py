@@ -86,6 +86,29 @@ def test_inception_score_bounds():
         ebm.eval.inception_score(torch.rand(10))  # not (N, K)
 
 
+def test_kernel_stein_discrepancy_matches_and_detects_mismatch():
+    x = torch.randn(500, 2)  # ~ N(0, I)
+
+    def gaussian(a):
+        return lambda z: 0.5 * a * z.pow(2).sum(dim=1)  # score of N(0, 1/a)
+
+    # Correct model: KSD² ≈ 0. Wrong scale: positive and growing with mismatch.
+    assert abs(ebm.eval.kernel_stein_discrepancy(gaussian(1.0), x)) < 0.01
+    ksd_15 = ebm.eval.kernel_stein_discrepancy(gaussian(1.5), x)
+    ksd_20 = ebm.eval.kernel_stein_discrepancy(gaussian(2.0), x)
+    assert 0.02 < ksd_15 < ksd_20
+
+    with pytest.raises(ValueError):
+        ebm.eval.kernel_stein_discrepancy(gaussian(1.0), torch.randn(1, 2))
+
+
+def test_classifier_two_sample_test_limits():
+    same = ebm.eval.classifier_two_sample_test(torch.randn(1500, 2), torch.randn(1500, 2))
+    assert 0.4 < same < 0.6  # indistinguishable → chance accuracy
+    diff = ebm.eval.classifier_two_sample_test(torch.randn(1500, 2), torch.randn(1500, 2) + 5.0)
+    assert diff > 0.95  # far apart → perfectly separable
+
+
 def test_bits_per_dim_matches_gaussian_closed_form():
     # Standard normal: E(x)=||x||^2/2, log Z = (D/2) log(2 pi).
     d = 5
