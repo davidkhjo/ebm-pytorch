@@ -4,7 +4,7 @@ import pytest
 import torch
 
 import ebm
-from ebm.nets import _GaussianFourierFeatures
+from ebm.nets import _GaussianFourierFeatures, _ResBlock
 
 
 def test_energy_net_output_shapes():
@@ -98,3 +98,27 @@ def test_gaussian_mixture_energy_closed_form():
         ebm.nets.GaussianMixtureEnergy(means, weights=[1.0], std=1.0)  # weight count
     with pytest.raises(ValueError):
         ebm.nets.GaussianMixtureEnergy(means, std=0.0)  # bad std
+
+
+def test_resnet_energy_shape_and_batch_independence():
+    net = ebm.nets.ResNetEnergy(in_channels=1, channels=(16, 32))
+    x = torch.randn(4, 1, 16, 16)
+    out = net(x)
+    assert out.shape == (4,)
+    # No normalization across the batch: a sample's energy is independent of the rest.
+    assert torch.allclose(out[2], net(x[2:3])[0], atol=1e-6)
+
+
+def test_resnet_block_is_identity_at_init():
+    # Zero-initialized second conv + identity skip → the block is the identity.
+    block = _ResBlock(8, 8, spectral_norm=False, downsample=False)
+    y = torch.randn(2, 8, 12, 12)
+    assert torch.allclose(block(y), y, atol=1e-6)
+
+
+def test_resnet_energy_spectral_norm_trains():
+    net = ebm.nets.ResNetEnergy(in_channels=3, channels=(16, 32), spectral_norm=True)
+    out = net(torch.randn(2, 3, 32, 32))
+    assert out.shape == (2,)
+    out.sum().backward()
+    assert all(p.grad is not None for p in net.parameters() if p.requires_grad)
