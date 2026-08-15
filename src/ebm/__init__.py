@@ -32,7 +32,9 @@ from ebm.samplers import (
     GibbsWithGradients,
     LangevinDynamics,
     ParallelTempering,
+    PreconditionedLangevin,
     Sampler,
+    UnderdampedLangevin,
 )
 from ebm.training import Trainer
 from ebm.utils import EMA
@@ -53,6 +55,8 @@ __all__ = [
     "Sampler",
     "LangevinDynamics",
     "MALA",
+    "UnderdampedLangevin",
+    "PreconditionedLangevin",
     "HMC",
     "GibbsWithGradients",
     "CategoricalGibbsWithGradients",
