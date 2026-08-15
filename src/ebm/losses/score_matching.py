@@ -90,6 +90,34 @@ class MultiSigmaDenoisingScoreMatching(nn.Module):
         return LossOutput(loss=loss, metrics={"loss": loss.item()})
 
 
+class ExactScoreMatching(nn.Module):
+    """Hyvärinen (2005) implicit score matching — the exact objective.
+
+    ``L = E_x[ ½‖s(x)‖² + tr(∇_x s(x)) ]`` with ``s = -∇_x E``. The trace of the
+    score's Jacobian (the Hessian-diagonal term) is computed exactly by ``D``
+    extra backward passes, one per input dimension, so cost is **linear in the
+    data dimension** — use it on small ``D`` as the ground-truth anchor for the
+    stochastic score-matching losses (`SlicedScoreMatching`,
+    `DenoisingScoreMatching`), which approximate this at fixed cost. Keeps the
+    graph (``create_graph=True``) so it backpropagates to the energy parameters.
+    """
+
+    def forward(self, energy: EnergyFn, x: Tensor) -> LossOutput:
+        x = x.detach().requires_grad_(True)
+        e = energy(x)
+        (grad_e,) = torch.autograd.grad(e.sum(), x, create_graph=True)
+        s = -grad_e
+        s_flat = s.reshape(x.shape[0], -1)
+
+        trace = x.new_zeros(x.shape[0])
+        for i in range(s_flat.shape[1]):
+            (grad_si,) = torch.autograd.grad(s_flat[:, i].sum(), x, create_graph=True)
+            trace = trace + grad_si.reshape(x.shape[0], -1)[:, i]
+
+        loss = (0.5 * s_flat.pow(2).sum(dim=1) + trace).mean()
+        return LossOutput(loss=loss, metrics={"loss": loss.item()})
+
+
 class SlicedScoreMatching(nn.Module):
     """Sliced score matching with random projections (Hutchinson-style).
 

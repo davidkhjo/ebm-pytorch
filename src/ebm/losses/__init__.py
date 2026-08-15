@@ -4,6 +4,7 @@ from ebm.losses.drl import DiffusionRecoveryLikelihood, drl_sample
 from ebm.losses.nce import NoiseContrastiveEstimation
 from ebm.losses.score_matching import (
     DenoisingScoreMatching,
+    ExactScoreMatching,
     MultiSigmaDenoisingScoreMatching,
     SlicedScoreMatching,
     geometric_sigmas,
@@ -15,6 +16,7 @@ __all__ = [
     "DiffusionRecoveryLikelihood",
     "drl_sample",
     "DenoisingScoreMatching",
+    "ExactScoreMatching",
     "MultiSigmaDenoisingScoreMatching",
     "SlicedScoreMatching",
     "NoiseContrastiveEstimation",
