@@ -28,6 +28,7 @@ from ebm.samplers import (
     CategoricalGibbsWithGradients,
     GibbsWithGradients,
     LangevinDynamics,
+    ParallelTempering,
     Sampler,
 )
 from ebm.training import Trainer
@@ -53,6 +54,7 @@ __all__ = [
     "GibbsWithGradients",
     "CategoricalGibbsWithGradients",
     "AnnealedLangevinDynamics",
+    "ParallelTempering",
     "ReplayBuffer",
     "LossOutput",
     "ContrastiveDivergence",
