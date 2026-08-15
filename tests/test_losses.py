@@ -1,3 +1,4 @@
+import pytest
 import torch
 from torch import nn
 
@@ -117,6 +118,48 @@ def test_exact_score_matching_agrees_with_sliced_on_a_gaussian():
     exact = ebm.ExactScoreMatching()(energy, x).loss.item()
     sliced = ebm.SlicedScoreMatching(n_projections=50, vr=True)(energy, x).loss.item()
     assert abs(exact - sliced) < 0.1
+
+
+class _Quadratic1D(nn.Module):
+    """E(x) = a (x - b)² — its ED minimizer on N(μ, s²) is a=1/(2s²), b=μ."""
+
+    def __init__(self):
+        super().__init__()
+        self.a = nn.Parameter(torch.tensor(0.6))
+        self.b = nn.Parameter(torch.tensor(0.0))
+
+    def forward(self, x):
+        return (self.a * (x - self.b).pow(2)).sum(dim=1)
+
+
+def test_energy_discrepancy_recovers_gaussian():
+    mu, s = 1.5, 1.2
+    data = mu + s * torch.randn(8000, 1)
+    energy = _Quadratic1D()
+    ed = ebm.EnergyDiscrepancy(sigma=1.0, m_particles=16, w_stable=1.0)
+    opt = torch.optim.Adam(energy.parameters(), lr=0.01)
+    for _ in range(3000):
+        idx = torch.randint(0, len(data), (512,))
+        loss = ed(energy, data[idx]).loss
+        opt.zero_grad()
+        loss.backward()
+        opt.step()
+    assert abs(energy.a.item() - 1 / (2 * s**2)) < 0.05
+    assert abs(energy.b.item() - mu) < 0.1
+
+
+def test_energy_discrepancy_shapes_and_validation():
+    net = ebm.nets.MLPEnergy(dim=2, hidden=(16,))
+    out = ebm.EnergyDiscrepancy(m_particles=4)(net, torch.randn(8, 2))
+    assert out.x_neg.shape == (8 * 4, 2)  # M contrastive draws per point
+    out.loss.backward()
+    assert all(p.grad is not None for n, p in net.named_parameters() if "weight" in n)
+
+    # No sampler, so the loss is finite with w>0 even for a wild energy.
+    assert torch.isfinite(ebm.EnergyDiscrepancy(w_stable=0.0)(net, torch.randn(8, 2)).loss)
+    for bad in (dict(sigma=0.0), dict(m_particles=0), dict(w_stable=-1.0)):
+        with pytest.raises(ValueError):
+            ebm.EnergyDiscrepancy(**bad)
 
 
 def test_nce_log_z_learns():
