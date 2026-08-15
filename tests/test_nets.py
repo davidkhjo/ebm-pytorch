@@ -58,3 +58,43 @@ def test_gaussian_fourier_features_shape_and_even_dim():
     assert out.shape == (5, 16)
     with pytest.raises(ValueError):
         _GaussianFourierFeatures(embed_dim=15)  # must be even
+
+
+def test_funnel_energy_closed_form():
+    # E(x) = 0.5 * (v^2 / v_scale^2 + e^{-v} ||neck||^2 + n * v).
+    energy = ebm.nets.FunnelEnergy(dim=3, v_scale=3.0)
+    x = torch.tensor([[0.0, 1.0, 2.0], [1.5, -1.0, 0.0]])
+    v = x[:, 0]
+    neck_sq = x[:, 1:].pow(2).sum(dim=1)
+    expected = 0.5 * (v.pow(2) / 9.0 + torch.exp(-v) * neck_sq + 2 * v)
+    assert torch.allclose(energy(x), expected)
+
+    # At the origin only the v-quadratic survives (e^0 * 0 + 0); here E = 0.
+    assert torch.allclose(energy(torch.zeros(1, 3)), torch.zeros(1))
+    with pytest.raises(ValueError):
+        ebm.nets.FunnelEnergy(dim=1)  # needs a neck
+    with pytest.raises(ValueError):
+        energy(torch.zeros(4, 2))  # wrong width
+
+
+def test_gaussian_mixture_energy_closed_form():
+    means = torch.tensor([[-4.0, 0.0], [4.0, 0.0]])
+    energy = ebm.nets.GaussianMixtureEnergy(means, std=0.5)
+
+    # Deep inside one well-separated mode the other component is negligible, so
+    # E(x) ≈ ||x - μ||^2 / (2σ²) - log(w) with equal unit weights (log 1 = 0).
+    x = torch.tensor([[-4.3, 0.2]])
+    near = ((x - means[0]).pow(2).sum() / (2 * 0.5**2)).reshape(1)
+    assert torch.allclose(
+        energy(x),
+        -torch.logsumexp(
+            torch.tensor([-near.item(), -(((x - means[1]).pow(2).sum()) / (2 * 0.5**2)).item()]), 0
+        ).reshape(1),
+    )
+
+    # Symmetric target: energy at mirrored points is equal.
+    assert torch.allclose(energy(torch.tensor([[-4.0, 0.0]])), energy(torch.tensor([[4.0, 0.0]])))
+    with pytest.raises(ValueError):
+        ebm.nets.GaussianMixtureEnergy(means, weights=[1.0], std=1.0)  # weight count
+    with pytest.raises(ValueError):
+        ebm.nets.GaussianMixtureEnergy(means, std=0.0)  # bad std
