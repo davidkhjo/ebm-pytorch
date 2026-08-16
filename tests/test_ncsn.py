@@ -105,3 +105,31 @@ def test_ncsn_end_to_end():
     samples = sampler.sample(net, torch.randn(1000, 1) * 3)
     assert samples.mean().abs().item() < 0.25
     assert (samples.std() - 1.0).abs().item() < 0.3
+
+
+def test_probability_flow_ode_recovers_gaussian_and_is_deterministic():
+    sigmas = ebm.geometric_sigmas(10.0, 0.01, 500)
+    x0 = torch.randn(4000, 2) * float(sigmas[0])  # ~ N(0, sigma_max^2 I)
+    ode = ebm.ProbabilityFlowODE(sigmas)
+    out = ode.sample(smoothed_energy, x0)
+    assert out.mean().abs().item() < 0.05
+    assert (out.std() - 1.0).abs().item() < 0.05
+    # No injected noise → the map is deterministic.
+    assert torch.allclose(out, ode.sample(smoothed_energy, x0))
+
+
+def test_predictor_corrector_recovers_gaussian():
+    sigmas = ebm.geometric_sigmas(10.0, 0.01, 500)
+    x0 = torch.randn(4000, 2) * float(sigmas[0])
+    out = ebm.PredictorCorrector(sigmas, n_corrector=1, snr=0.16).sample(smoothed_energy, x0)
+    assert out.mean().abs().item() < 0.05
+    assert (out.std() - 1.0).abs().item() < 0.08
+
+
+def test_score_sde_samplers_validate_ladder():
+    import pytest
+
+    with pytest.raises(ValueError):
+        ebm.ProbabilityFlowODE(torch.tensor([0.1, 0.5]))  # not decreasing
+    with pytest.raises(ValueError):
+        ebm.PredictorCorrector(torch.tensor([1.0]))  # need >= 2 levels
