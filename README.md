@@ -45,11 +45,11 @@ returns `LossOutput(loss, metrics, x_neg)`; call `out.loss.backward()`).
 | Piece | Contents |
 |---|---|
 | **Energies** | any callable `(B, *shape) -> (B,)`; `nets.MLPEnergy` / `ConvEnergy` / `ResNetEnergy` / `ConvClassifier` (SiLU, optional spectral norm, no batch norm), `nets.RBM` (Bernoulli RBM with exact `log_z`), `nets.IsingEnergy` / `PottsEnergy` (discrete lattices), `nets.FunnelEnergy` / `GaussianMixtureEnergy` / `BananaEnergy` (closed-form targets), noise-conditional variants for NCSN; `EnergyModel`, `ebm.score` |
-| **Samplers** | `LangevinDynamics` (ULA/SGLD), `MALA`, `HMC`, `UnderdampedLangevin` (SGHMC), `PreconditionedLangevin`, `ParallelTempering` (replica exchange), `SVGD` (Stein variational), `GibbsSampler` (block Gibbs), `GibbsWithGradients` + `CategoricalGibbsWithGradients`, `AnnealedLangevinDynamics`, `ProbabilityFlowODE` / `PredictorCorrector` (score-SDE) |
+| **Samplers** | `LangevinDynamics` (ULA/SGLD), `MALA`, `HMC`, `UnderdampedLangevin` (SGHMC), `PreconditionedLangevin`, `ParallelTempering` (replica exchange), `TemperedTransitions`, `SVGD` (Stein variational), `GibbsSampler` (block Gibbs), `GibbsWithGradients` + `CategoricalGibbsWithGradients`, `AnnealedLangevinDynamics`, `ProbabilityFlowODE` / `PredictorCorrector` (score-SDE) |
 | **Losses** | `ContrastiveDivergence` (CD-k / persistent CD), `DiffusionRecoveryLikelihood` + `drl_sample`, `DenoisingScoreMatching` / `MultiSigmaDenoisingScoreMatching` (NCSN), `SlicedScoreMatching`, `ExactScoreMatching`, `EnergyDiscrepancy` (MCMC-free), `PseudoLikelihood` / `RatioMatching` / `ConcreteScoreMatching` (MCMC-free, discrete), `NoiseContrastiveEstimation`, `JEMLoss` |
 | **Composition** | `SumEnergy` (product of experts), `MixtureEnergy`, `TemperedEnergy` — energies compose like densities and nest |
 | **Training** | thin `Trainer` (device, EMA, supervised batches, `save`/`load` checkpointing), `ReplayBuffer`, `EMA` |
-| **Eval** | `ais_log_z` / `reverse_ais_log_z` (bracket `log Z`), `bits_per_dim`, `frechet_distance` (FID), `mmd`, `precision_recall`, `inception_score`, `kernel_stein_discrepancy` / `classifier_two_sample_test` (goodness-of-fit), `ood_auroc`, `effective_sample_size` / `split_rhat` (MCMC diagnostics) |
+| **Eval** | `ais_log_z` / `reverse_ais_log_z` (bracket `log Z`), `bits_per_dim`, `frechet_distance` (FID), `mmd`, `precision_recall`, `inception_score`, `kernel_stein_discrepancy` / `classifier_two_sample_test` / `fisher_divergence` (goodness-of-fit), `mutual_information` (MINE), `ood_auroc`, `effective_sample_size` / `split_rhat` (MCMC diagnostics) |
 | **Data & viz** | 2D toys (`two_moons`, `eight_gaussians`, `checkerboard`, `rings`, `spirals`) and torchvision-free image loaders (`mnist`, `fashion_mnist`, `cifar10`, `cifar100`); `viz.energy_contour` / `plot_samples` / `energy_histogram` / `show_images` |
 
 ## Examples
@@ -70,6 +70,7 @@ Runnable scripts in [`examples/`](https://github.com/davidkhjo/ebmkit/tree/main/
 - `train_energy_discrepancy.py` — two-moons trained MCMC-free (energy discrepancy)
 - `sampling_hard_targets.py` — parallel tempering escapes a trapped mode; ESS / R̂ diagnostics
 - `goodness_of_fit.py` — KSD for model selection; classifier two-sample test
+- `mine_mutual_information.py` — estimate mutual information with MINE vs the Gaussian closed form
 - `benchmark_samplers.py` — rank samplers on the banana against exact draws (ESS, R̂, MMD)
 - `checkpoint_resume.py` — save a run and resume it in a fresh process
 

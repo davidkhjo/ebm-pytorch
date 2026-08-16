@@ -25,19 +25,23 @@ known distribution, torch-only at runtime.
   `RatioMatching` (Hyvärinen 2007) — train any binary energy (RBM, Ising) from
   single-bit-flip energy differences — and `ConcreteScoreMatching` (Meng et al.
   2022), the categorical analogue of score matching for one-hot data.
-- **Goodness-of-fit eval.** `kernel_stein_discrepancy` (Liu et al. 2016 — a
-  score-only GoF test / model selector, no partition function) and
-  `classifier_two_sample_test` (Lopez-Paz & Oquab 2017).
+- **Goodness-of-fit & information eval.** `kernel_stein_discrepancy` (Liu et al.
+  2016 — a score-only GoF test / model selector, no partition function),
+  `classifier_two_sample_test` (Lopez-Paz & Oquab 2017), `fisher_divergence`
+  (score-space distance between two EBMs), and `mutual_information` (MINE,
+  Belghazi et al. 2018).
 - **`nets.BananaEnergy`** — a curved twisted-Gaussian MCMC stress test with an
   exact sampler (`exact_sample`) for ground-truthed benchmarks.
 - **Deterministic & score-SDE samplers.** `SVGD` (Stein variational gradient
   descent — deterministic interacting-particle transport), and `ProbabilityFlowODE`
   + `PredictorCorrector` (Song et al. 2021 VE score-SDE samplers over a
   noise-conditional energy; the ODE is reproducible).
+- **`TemperedTransitions`** — Neal's (1996) single-chain annealed barrier
+  crossing, a replica-free complement to `ParallelTempering`.
 - **Examples.** `sampling_hard_targets.py`, `train_rbm.py`,
   `train_energy_discrepancy.py`, `train_ising_pseudolikelihood.py`,
   `goodness_of_fit.py`, `benchmark_samplers.py`, `deterministic_sampling.py`,
-  `train_potts_concrete.py`.
+  `train_potts_concrete.py`, `mine_mutual_information.py`.
 
 ## 0.12.0 — 2026-08-14
 
