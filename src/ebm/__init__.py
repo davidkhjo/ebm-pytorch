@@ -11,6 +11,7 @@ from ebm.compose import MixtureEnergy, SumEnergy, TemperedEnergy
 from ebm.energy import ConditionalEnergyFn, EnergyFn, EnergyModel, score
 from ebm.jem import ClassifierEnergy, ConditionalEnergy, JEMLoss
 from ebm.losses import (
+    ConcreteScoreMatching,
     ContrastiveDivergence,
     DenoisingScoreMatching,
     DiffusionRecoveryLikelihood,
@@ -80,6 +81,7 @@ __all__ = [
     "EnergyDiscrepancy",
     "PseudoLikelihood",
     "RatioMatching",
+    "ConcreteScoreMatching",
     "ExactScoreMatching",
     "MultiSigmaDenoisingScoreMatching",
     "SlicedScoreMatching",
