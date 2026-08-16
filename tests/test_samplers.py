@@ -120,6 +120,30 @@ def test_underdamped_explores_the_funnel():
     assert samples[:, 0].std().item() > 1.0
 
 
+def test_svgd_recovers_a_correlated_gaussian():
+    mu = torch.tensor([1.0, -2.0])
+    cov = torch.tensor([[2.0, 0.8], [0.8, 1.0]])
+    precision = torch.linalg.inv(cov)
+
+    def energy(x):
+        c = x - mu
+        return 0.5 * ((c @ precision) * c).sum(dim=1)
+
+    particles = ebm.SVGD(step_size=0.3, steps=1000).sample(
+        energy, torch.randn(300, 2) * 0.5 + torch.tensor([5.0, 5.0])
+    )
+    assert (particles.mean(0) - mu).abs().max().item() < 0.15
+    assert (torch.cov(particles.T) - cov).abs().max().item() < 0.2
+    assert not particles.requires_grad
+
+
+def test_svgd_spreads_across_both_modes():
+    energy = ebm.nets.GaussianMixtureEnergy(torch.tensor([[-3.0], [3.0]]), std=1.0)
+    particles = ebm.SVGD(step_size=0.3, steps=800).sample(energy, torch.randn(400, 1) * 0.5)
+    frac_neg = (particles < 0).float().mean().item()
+    assert 0.3 < frac_neg < 0.7  # deterministic transport still covers both modes
+
+
 def test_hmc_recovers_the_banana():
     # The banana has an exact sampler, so we can check the MCMC output directly.
     energy = ebm.nets.BananaEnergy(b=0.5, sigma=(1.0, 1.0))
