@@ -8,6 +8,8 @@ re-exported here).
 
 from __future__ import annotations
 
+import math
+
 import torch
 from torch import Tensor, nn
 
@@ -29,6 +31,8 @@ __all__ = [
     "inception_score",
     "kernel_stein_discrepancy",
     "classifier_two_sample_test",
+    "fisher_divergence",
+    "mutual_information",
     "AISResult",
 ]
 
@@ -395,6 +399,52 @@ def classifier_two_sample_test(
     with torch.no_grad():
         pred = (net(x_te).squeeze(-1) > 0).float()
     return float((pred == y_te).float().mean())
+
+
+def fisher_divergence(energy_a: EnergyFn, energy_b: EnergyFn, x: Tensor) -> float:
+    """Fisher divergence ``E_x ‖s_a(x) - s_b(x)‖²`` between two EBMs (via scores).
+
+    The expected squared gap between the two models' scores ``s = -∇E`` on the
+    sample set ``x`` — a score-space distance that, unlike a partition-function
+    comparison, is available directly from the energies. ``0`` iff the two scores
+    agree on the support of ``x``. (Needs gradients, so not under ``no_grad``.)
+    """
+    s_a = score(energy_a, x).detach()
+    s_b = score(energy_b, x).detach()
+    return float((s_a - s_b).reshape(len(x), -1).pow(2).sum(dim=1).mean())
+
+
+def mutual_information(
+    x: Tensor, y: Tensor, *, hidden: int = 64, epochs: int = 400, lr: float = 1e-3
+) -> float:
+    """Mutual information between paired samples via MINE (Belghazi et al. 2018).
+
+    Trains a small statistics network ``T(x, y)`` to maximize the Donsker–Varadhan
+    lower bound ``I(X;Y) ≥ E_{p(x,y)}[T] - log E_{p(x)p(y)}[exp T]`` (marginal
+    samples obtained by shuffling ``y`` within the batch) and returns the bound.
+    A neural, distribution-free estimator; higher = more dependence. Pure torch.
+    """
+    xf = x.detach().reshape(len(x), -1).float()
+    yf = y.detach().reshape(len(y), -1).float()
+    net = nn.Sequential(
+        nn.Linear(xf.shape[1] + yf.shape[1], hidden),
+        nn.ReLU(),
+        nn.Linear(hidden, hidden),
+        nn.ReLU(),
+        nn.Linear(hidden, 1),
+    )
+    opt = torch.optim.Adam(net.parameters(), lr=lr)
+    bound = 0.0
+    for _ in range(epochs):
+        perm = torch.randperm(len(yf))
+        joint = net(torch.cat([xf, yf], dim=1)).squeeze(-1)
+        marginal = net(torch.cat([xf, yf[perm]], dim=1)).squeeze(-1)
+        mi = joint.mean() - torch.logsumexp(marginal, dim=0) + math.log(len(marginal))
+        opt.zero_grad()
+        (-mi).backward()
+        opt.step()
+        bound = float(mi.detach())
+    return bound
 
 
 @torch.no_grad()
