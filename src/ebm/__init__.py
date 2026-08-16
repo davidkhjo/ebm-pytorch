@@ -28,6 +28,7 @@ from ebm.losses import (
 from ebm.samplers import (
     HMC,
     MALA,
+    SVGD,
     AnnealedLangevinDynamics,
     CategoricalGibbsWithGradients,
     GibbsSampler,
@@ -65,6 +66,7 @@ __all__ = [
     "GibbsSampler",
     "AnnealedLangevinDynamics",
     "ParallelTempering",
+    "SVGD",
     "ReplayBuffer",
     "LossOutput",
     "ContrastiveDivergence",
