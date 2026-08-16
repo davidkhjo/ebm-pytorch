@@ -36,6 +36,8 @@ from ebm.samplers import (
     LangevinDynamics,
     ParallelTempering,
     PreconditionedLangevin,
+    PredictorCorrector,
+    ProbabilityFlowODE,
     Sampler,
     UnderdampedLangevin,
 )
@@ -67,6 +69,8 @@ __all__ = [
     "AnnealedLangevinDynamics",
     "ParallelTempering",
     "SVGD",
+    "ProbabilityFlowODE",
+    "PredictorCorrector",
     "ReplayBuffer",
     "LossOutput",
     "ContrastiveDivergence",
