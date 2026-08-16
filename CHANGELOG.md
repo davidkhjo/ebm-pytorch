@@ -29,9 +29,13 @@ known distribution, torch-only at runtime.
   `classifier_two_sample_test` (Lopez-Paz & Oquab 2017).
 - **`nets.BananaEnergy`** — a curved twisted-Gaussian MCMC stress test with an
   exact sampler (`exact_sample`) for ground-truthed benchmarks.
+- **Deterministic & score-SDE samplers.** `SVGD` (Stein variational gradient
+  descent — deterministic interacting-particle transport), and `ProbabilityFlowODE`
+  + `PredictorCorrector` (Song et al. 2021 VE score-SDE samplers over a
+  noise-conditional energy; the ODE is reproducible).
 - **Examples.** `sampling_hard_targets.py`, `train_rbm.py`,
   `train_energy_discrepancy.py`, `train_ising_pseudolikelihood.py`,
-  `goodness_of_fit.py`, `benchmark_samplers.py`.
+  `goodness_of_fit.py`, `benchmark_samplers.py`, `deterministic_sampling.py`.
 
 ## 0.12.0 — 2026-08-14
 

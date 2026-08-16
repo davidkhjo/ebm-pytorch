@@ -9,6 +9,8 @@ from ebm.samplers.langevin import (
     PreconditionedLangevin,
     UnderdampedLangevin,
 )
+from ebm.samplers.score_sde import PredictorCorrector, ProbabilityFlowODE
+from ebm.samplers.svgd import SVGD
 from ebm.samplers.tempering import ParallelTempering
 
 __all__ = [
@@ -23,4 +25,7 @@ __all__ = [
     "GibbsSampler",
     "AnnealedLangevinDynamics",
     "ParallelTempering",
+    "SVGD",
+    "ProbabilityFlowODE",
+    "PredictorCorrector",
 ]

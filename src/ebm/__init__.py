@@ -28,6 +28,7 @@ from ebm.losses import (
 from ebm.samplers import (
     HMC,
     MALA,
+    SVGD,
     AnnealedLangevinDynamics,
     CategoricalGibbsWithGradients,
     GibbsSampler,
@@ -35,6 +36,8 @@ from ebm.samplers import (
     LangevinDynamics,
     ParallelTempering,
     PreconditionedLangevin,
+    PredictorCorrector,
+    ProbabilityFlowODE,
     Sampler,
     UnderdampedLangevin,
 )
@@ -65,6 +68,9 @@ __all__ = [
     "GibbsSampler",
     "AnnealedLangevinDynamics",
     "ParallelTempering",
+    "SVGD",
+    "ProbabilityFlowODE",
+    "PredictorCorrector",
     "ReplayBuffer",
     "LossOutput",
     "ContrastiveDivergence",
