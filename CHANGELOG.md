@@ -21,9 +21,10 @@ known distribution, torch-only at runtime.
 - **Eval.** `effective_sample_size` and `split_rhat` (MCMC convergence
   diagnostics), `precision_recall` (Kynkäänniemi et al. 2019 — fidelity vs
   coverage), and `inception_score` (formula over user-supplied classifier probs).
-- **MCMC-free discrete losses.** `PseudoLikelihood` (Besag 1975) and
+- **MCMC-free discrete losses.** `PseudoLikelihood` (Besag 1975),
   `RatioMatching` (Hyvärinen 2007) — train any binary energy (RBM, Ising) from
-  single-bit-flip energy differences, no sampler.
+  single-bit-flip energy differences — and `ConcreteScoreMatching` (Meng et al.
+  2022), the categorical analogue of score matching for one-hot data.
 - **Goodness-of-fit eval.** `kernel_stein_discrepancy` (Liu et al. 2016 — a
   score-only GoF test / model selector, no partition function) and
   `classifier_two_sample_test` (Lopez-Paz & Oquab 2017).
@@ -35,7 +36,8 @@ known distribution, torch-only at runtime.
   noise-conditional energy; the ODE is reproducible).
 - **Examples.** `sampling_hard_targets.py`, `train_rbm.py`,
   `train_energy_discrepancy.py`, `train_ising_pseudolikelihood.py`,
-  `goodness_of_fit.py`, `benchmark_samplers.py`, `deterministic_sampling.py`.
+  `goodness_of_fit.py`, `benchmark_samplers.py`, `deterministic_sampling.py`,
+  `train_potts_concrete.py`.
 
 ## 0.12.0 — 2026-08-14
 
