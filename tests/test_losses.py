@@ -227,6 +227,74 @@ def test_discrete_losses_are_mcmc_free_and_flow_gradients():
         rbm.zero_grad()
 
 
+class _CategoricalEnergy(nn.Module):
+    """Small learnable energy on one-hot (B, D, K) data."""
+
+    def __init__(self, d, k):
+        super().__init__()
+        self.net = nn.Sequential(nn.Linear(d * k, 32), nn.SiLU(), nn.Linear(32, 1))
+
+    def forward(self, x):
+        return self.net(x.reshape(x.shape[0], -1)).squeeze(-1)
+
+
+def _categorical_states(d, k):
+    import itertools
+
+    return torch.stack(
+        [
+            torch.nn.functional.one_hot(torch.tensor(c), k).float()
+            for c in itertools.product(range(k), repeat=d)
+        ]
+    )
+
+
+def _train_csm_kl(loss_fn, d=2, k=3, steps=2000):
+    states = _categorical_states(d, k)
+    torch.manual_seed(3)
+    data_pmf = torch.softmax(torch.randn(k**d) * 1.5, dim=0)
+    data = states[torch.multinomial(data_pmf, 20000, replacement=True)]
+
+    torch.manual_seed(0)
+    energy = _CategoricalEnergy(d, k)
+    opt = torch.optim.Adam(energy.parameters(), lr=0.01)
+    for _ in range(steps):
+        batch = data[torch.randint(0, len(data), (256,))]
+        loss = loss_fn(energy, batch).loss
+        opt.zero_grad()
+        loss.backward()
+        opt.step()
+    model_pmf = torch.softmax(-energy(states), dim=0)
+    return (
+        (data_pmf * (data_pmf.clamp_min(1e-9).log() - model_pmf.clamp_min(1e-9).log())).sum().item()
+    )
+
+
+def test_concrete_score_matching_recovers_categorical_pmf():
+    # The two-term objective recovers the full pmf on an enumerable categorical model.
+    assert _train_csm_kl(ebm.ConcreteScoreMatching()) < 0.05
+
+
+def test_concrete_score_matching_two_term_beats_naive():
+    # Dropping the cross term is inconsistent — it inverts the distribution.
+    class _Naive(ebm.ConcreteScoreMatching):
+        def forward(self, energy, x):
+            b, k = x.shape[0], x.shape[-1]
+            flat = x.reshape(b, -1, k)
+            e_x = energy(x)
+            total = x.new_zeros(b)
+            for site in range(flat.shape[1]):
+                for cat in range(k):
+                    y = flat.clone()
+                    y[:, site, :] = 0.0
+                    y[:, site, cat] = 1.0
+                    diff = (e_x - energy(y.reshape_as(x))).clamp(-15, 15)
+                    total = total + 0.5 * (torch.exp(diff) - 1) ** 2  # no cross term
+            return ebm.LossOutput(loss=total.mean())
+
+    assert _train_csm_kl(ebm.ConcreteScoreMatching()) < 0.5 * _train_csm_kl(_Naive())
+
+
 def test_nce_log_z_learns():
     net = ScaledQuadratic(1.0)
     loss_fn = ebm.NoiseContrastiveEstimation()

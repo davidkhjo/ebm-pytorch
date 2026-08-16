@@ -47,6 +47,49 @@ class PseudoLikelihood(nn.Module):
         return LossOutput(loss=loss, metrics={"loss": loss.item()})
 
 
+class ConcreteScoreMatching(nn.Module):
+    """Concrete (discrete) score matching for categorical data (Meng et al. 2022).
+
+    The categorical analogue of score matching: fits the model's *concrete score*
+    (the ratios ``p(y)/p(x)`` over single-site neighbors ``y``) to the data's,
+    with no partition function and no sampler. Over the symmetric Hamming-1
+    neighborhood — change one site to a different category — the tractable
+    objective is
+
+        J = E_{x~data} Σ_{y∈N(x)} [ ½(exp(E(x)-E(y)) - 1)² - (exp(E(y)-E(x)) - 1) ]
+
+    The second (cross) term is essential — without it the objective is
+    inconsistent and inverts the distribution. Input is one-hot ``(B, *dims, K)``
+    (e.g. `ebm.nets.PottsEnergy`); cost is ``O(D·K)`` energy evaluations per step,
+    so it suits small categorical / lattice models.
+    """
+
+    def __init__(self, clamp: float = 15.0):
+        super().__init__()
+        self.clamp = clamp
+
+    def forward(self, energy: EnergyFn, x: Tensor) -> LossOutput:
+        b = x.shape[0]
+        k = x.shape[-1]
+        flat = x.reshape(b, -1, k)  # (B, D, K)
+        d = flat.shape[1]
+
+        e_x = energy(x)
+        total = x.new_zeros(b)
+        for site in range(d):
+            for cat in range(k):
+                y = flat.clone()
+                y[:, site, :] = 0.0
+                y[:, site, cat] = 1.0
+                # diff = E(x) - E(y); the current-category neighbor has diff=0 and
+                # contributes exactly 0, so no masking is needed.
+                diff = (e_x - energy(y.reshape_as(x))).clamp(-self.clamp, self.clamp)
+                total = total + 0.5 * (torch.exp(diff) - 1) ** 2 - (torch.exp(-diff) - 1)
+
+        loss = total.mean()
+        return LossOutput(loss=loss, metrics={"loss": loss.item()})
+
+
 class RatioMatching(nn.Module):
     """Ratio matching (Hyvärinen 2007) — the binary analogue of score matching.
 

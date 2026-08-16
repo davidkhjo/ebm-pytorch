@@ -1,6 +1,6 @@
 from ebm.losses.base import LossOutput
 from ebm.losses.cd import ContrastiveDivergence
-from ebm.losses.discrete import PseudoLikelihood, RatioMatching
+from ebm.losses.discrete import ConcreteScoreMatching, PseudoLikelihood, RatioMatching
 from ebm.losses.drl import DiffusionRecoveryLikelihood, drl_sample
 from ebm.losses.energy_discrepancy import EnergyDiscrepancy
 from ebm.losses.nce import NoiseContrastiveEstimation
@@ -20,6 +20,7 @@ __all__ = [
     "EnergyDiscrepancy",
     "PseudoLikelihood",
     "RatioMatching",
+    "ConcreteScoreMatching",
     "DenoisingScoreMatching",
     "ExactScoreMatching",
     "MultiSigmaDenoisingScoreMatching",

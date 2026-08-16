@@ -46,7 +46,7 @@ returns `LossOutput(loss, metrics, x_neg)`; call `out.loss.backward()`).
 |---|---|
 | **Energies** | any callable `(B, *shape) -> (B,)`; `nets.MLPEnergy` / `ConvEnergy` / `ResNetEnergy` / `ConvClassifier` (SiLU, optional spectral norm, no batch norm), `nets.RBM` (Bernoulli RBM with exact `log_z`), `nets.IsingEnergy` / `PottsEnergy` (discrete lattices), `nets.FunnelEnergy` / `GaussianMixtureEnergy` / `BananaEnergy` (closed-form targets), noise-conditional variants for NCSN; `EnergyModel`, `ebm.score` |
 | **Samplers** | `LangevinDynamics` (ULA/SGLD), `MALA`, `HMC`, `UnderdampedLangevin` (SGHMC), `PreconditionedLangevin`, `ParallelTempering` (replica exchange), `SVGD` (Stein variational), `GibbsSampler` (block Gibbs), `GibbsWithGradients` + `CategoricalGibbsWithGradients`, `AnnealedLangevinDynamics`, `ProbabilityFlowODE` / `PredictorCorrector` (score-SDE) |
-| **Losses** | `ContrastiveDivergence` (CD-k / persistent CD), `DiffusionRecoveryLikelihood` + `drl_sample`, `DenoisingScoreMatching` / `MultiSigmaDenoisingScoreMatching` (NCSN), `SlicedScoreMatching`, `ExactScoreMatching`, `EnergyDiscrepancy` (MCMC-free), `PseudoLikelihood` / `RatioMatching` (MCMC-free, discrete), `NoiseContrastiveEstimation`, `JEMLoss` |
+| **Losses** | `ContrastiveDivergence` (CD-k / persistent CD), `DiffusionRecoveryLikelihood` + `drl_sample`, `DenoisingScoreMatching` / `MultiSigmaDenoisingScoreMatching` (NCSN), `SlicedScoreMatching`, `ExactScoreMatching`, `EnergyDiscrepancy` (MCMC-free), `PseudoLikelihood` / `RatioMatching` / `ConcreteScoreMatching` (MCMC-free, discrete), `NoiseContrastiveEstimation`, `JEMLoss` |
 | **Composition** | `SumEnergy` (product of experts), `MixtureEnergy`, `TemperedEnergy` — energies compose like densities and nest |
 | **Training** | thin `Trainer` (device, EMA, supervised batches, `save`/`load` checkpointing), `ReplayBuffer`, `EMA` |
 | **Eval** | `ais_log_z` / `reverse_ais_log_z` (bracket `log Z`), `bits_per_dim`, `frechet_distance` (FID), `mmd`, `precision_recall`, `inception_score`, `kernel_stein_discrepancy` / `classifier_two_sample_test` (goodness-of-fit), `ood_auroc`, `effective_sample_size` / `split_rhat` (MCMC diagnostics) |
@@ -66,6 +66,7 @@ Runnable scripts in [`examples/`](https://github.com/davidkhjo/ebmkit/tree/main/
 - `train_cifar_ood.py` — energy-based OOD at color scale (CIFAR-10 vs CIFAR-100)
 - `train_rbm.py` — a Bernoulli RBM on binary bars via CD-1, with the exact `log Z`
 - `train_ising_pseudolikelihood.py` — recover an Ising coupling with no MCMC in the loop
+- `train_potts_concrete.py` — recover a categorical density with concrete score matching (no MCMC)
 - `train_energy_discrepancy.py` — two-moons trained MCMC-free (energy discrepancy)
 - `sampling_hard_targets.py` — parallel tempering escapes a trapped mode; ESS / R̂ diagnostics
 - `goodness_of_fit.py` — KSD for model selection; classifier two-sample test
