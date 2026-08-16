@@ -40,6 +40,7 @@ from ebm.samplers import (
     PredictorCorrector,
     ProbabilityFlowODE,
     Sampler,
+    TemperedTransitions,
     UnderdampedLangevin,
 )
 from ebm.training import Trainer
@@ -72,6 +73,7 @@ __all__ = [
     "SVGD",
     "ProbabilityFlowODE",
     "PredictorCorrector",
+    "TemperedTransitions",
     "ReplayBuffer",
     "LossOutput",
     "ContrastiveDivergence",

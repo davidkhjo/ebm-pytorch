@@ -102,6 +102,32 @@ def test_parallel_tempering_validates_ladder():
         ebm.ParallelTempering(ebm.LangevinDynamics(), temperatures=(1.0,))  # need >= 2
 
 
+def test_tempered_transitions_crosses_a_barrier_and_keeps_weights():
+    # Asymmetric mixture (70/30). A single MALA chain stays trapped; tempered
+    # transitions melt/refreeze across the barrier and recover the true split.
+    energy = ebm.nets.GaussianMixtureEnergy(
+        torch.tensor([[-4.0], [4.0]]), weights=[0.7, 0.3], std=1.0
+    )
+    x0 = -4.0 + 0.3 * torch.randn(4000, 1)  # trapped in the LEFT (heavier) mode
+
+    trapped = ebm.MALA(step_size=0.15, steps=600).sample(energy, x0.clone())
+    assert (trapped > 0).float().mean().item() < 0.05
+
+    tt = ebm.TemperedTransitions(
+        ebm.MALA(step_size=0.15), temperatures=(1.0, 2.0, 4.0, 8.0, 16.0), kernel_steps=5, steps=120
+    )
+    pooled = tt.sample(energy, x0.clone())
+    assert 0.2 < (pooled > 0).float().mean().item() < 0.4  # recovers ~0.30, not 0.5
+    assert tt.last_accept_rate is not None
+
+
+def test_tempered_transitions_validates_ladder():
+    with pytest.raises(ValueError):
+        ebm.TemperedTransitions(ebm.MALA(), temperatures=(2.0, 4.0))  # first must be 1.0
+    with pytest.raises(ValueError):
+        ebm.TemperedTransitions(ebm.MALA(), temperatures=(1.0, 0.5))  # not ascending
+
+
 def test_underdamped_targets_standard_normal_and_resets_momentum():
     sampler = ebm.UnderdampedLangevin(step_size=0.1, friction=1.0, steps=300)
     samples = sampler.sample(quadratic_energy, 3 * torch.randn(4000, 2))
