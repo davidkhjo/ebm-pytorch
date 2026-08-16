@@ -119,3 +119,74 @@ class ParallelTempering(Sampler):
     def swap_rates(self) -> list[float]:
         """Mean acceptance of each adjacent swap pair over the last ``sample`` call."""
         return (self._swap_accept / self._swap_count.clamp(min=1)).tolist()
+
+
+class TemperedTransitions(Sampler):
+    """Tempered transitions: single-chain barrier crossing (Neal 1996).
+
+    A Metropolis move that melts and refreezes: it drives one chain up a
+    temperature ladder to a hot, freely-mixing distribution and back down to the
+    target, accumulating a log-weight along the way and doing a single
+    accept/reject at the end. Unlike `ParallelTempering` it keeps no replicas —
+    one chain crosses barriers by annealing. Each rung applies ``kernel_steps`` of
+    the wrapped ``base_sampler`` at that temperature.
+
+    Args:
+        base_sampler: sampler used for the within-rung moves.
+        temperatures: ascending ladder; ``temperatures[0]`` must be 1.0 (the
+            target), the rest hotter.
+        kernel_steps: base-sampler steps applied at each rung.
+        steps: number of tempered-transition moves per ``sample`` call.
+    """
+
+    def __init__(
+        self,
+        base_sampler: Sampler,
+        temperatures: tuple[float, ...] = (1.0, 2.0, 4.0, 8.0, 16.0),
+        kernel_steps: int = 5,
+        steps: int = 100,
+    ):
+        super().__init__(steps)
+        temps = [float(t) for t in temperatures]
+        if len(temps) < 2:
+            raise ValueError("need at least 2 temperatures")
+        if any(t <= 0 for t in temps):
+            raise ValueError("temperatures must be positive")
+        if temps != sorted(temps):
+            raise ValueError("temperatures must be ascending (T0 the target, then hotter)")
+        if abs(temps[0] - 1.0) > 1e-6:
+            raise ValueError("temperatures[0] must be 1.0 (the target distribution)")
+        if kernel_steps < 1:
+            raise ValueError("kernel_steps must be >= 1")
+        self.base = base_sampler
+        self.temperatures = temps
+        self.betas = [1.0 / t for t in temps]  # descending inverse temperatures
+        self.kernel_steps = kernel_steps
+
+    def step(self, energy: EnergyFn, x: Tensor) -> Tensor:
+        x_prop, log_w = self._transition(energy, x)
+        accept = torch.log(torch.rand_like(log_w)) < log_w
+        self._last_accept = accept.float().mean()
+        mask = accept.reshape(-1, *([1] * (x.dim() - 1)))
+        return torch.where(mask, x_prop, x.detach())
+
+    def _kernel(self, energy: EnergyFn, x: Tensor, temperature: float) -> Tensor:
+        tempered = _Tempered(energy, temperature)
+        for _ in range(self.kernel_steps):
+            x = self.base.step(tempered, x).detach()
+        return x
+
+    def _transition(self, energy: EnergyFn, x: Tensor) -> tuple[Tensor, Tensor]:
+        x = x.detach().clone()
+        log_w = x.new_zeros(x.shape[0])
+        betas, temps, n = self.betas, self.temperatures, len(self.betas)
+        # Up the ladder (cold -> hot), then back down (Neal's telescoping weight).
+        for i in range(n - 1):
+            with torch.no_grad():
+                log_w = log_w + (betas[i] - betas[i + 1]) * energy(x)
+            x = self._kernel(energy, x, temps[i + 1])
+        for i in range(n - 1, 0, -1):
+            with torch.no_grad():
+                log_w = log_w + (betas[i] - betas[i - 1]) * energy(x)
+            x = self._kernel(energy, x, temps[i - 1])
+        return x, log_w

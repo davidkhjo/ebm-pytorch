@@ -11,7 +11,7 @@ from ebm.samplers.langevin import (
 )
 from ebm.samplers.score_sde import PredictorCorrector, ProbabilityFlowODE
 from ebm.samplers.svgd import SVGD
-from ebm.samplers.tempering import ParallelTempering
+from ebm.samplers.tempering import ParallelTempering, TemperedTransitions
 
 __all__ = [
     "Sampler",
@@ -28,4 +28,5 @@ __all__ = [
     "SVGD",
     "ProbabilityFlowODE",
     "PredictorCorrector",
+    "TemperedTransitions",
 ]
