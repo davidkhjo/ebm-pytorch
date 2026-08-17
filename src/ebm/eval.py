@@ -14,7 +14,7 @@ import torch
 from torch import Tensor, nn
 
 from ebm.ais import AISResult, ais_log_z, log_likelihood, reverse_ais_log_z
-from ebm.energy import EnergyFn, score
+from ebm.energy import ConditionalEnergyFn, EnergyFn, score
 
 __all__ = [
     "energies",
@@ -33,8 +33,80 @@ __all__ = [
     "classifier_two_sample_test",
     "fisher_divergence",
     "mutual_information",
+    "pf_ode_log_likelihood",
     "AISResult",
 ]
+
+
+def _hutchinson_eps(x: Tensor, eps_dist: str) -> Tensor:
+    if eps_dist == "rademacher":
+        return (torch.randint(0, 2, x.shape, device=x.device) * 2 - 1).to(x.dtype)
+    if eps_dist == "gaussian":
+        return torch.randn_like(x)
+    raise ValueError("eps_dist must be 'rademacher' or 'gaussian'")
+
+
+def pf_ode_log_likelihood(
+    energy: ConditionalEnergyFn,
+    x0: Tensor,
+    sigmas: Tensor,
+    *,
+    n_hutchinson: int = 1,
+    eps_dist: str = "rademacher",
+) -> Tensor:
+    """Exact log-density of a score model via the probability-flow ODE (FFJORD).
+
+    Integrates the deterministic VE probability-flow ODE
+    ``dx/dσ = -σ·s(x, σ)`` (``s = -∇_x E``) from data up to the base
+    ``N(0, σ_max² I)`` while accumulating the log-determinant with the
+    instantaneous change of variables ``d log p/dσ = -tr(∂f/∂x)``, the trace
+    estimated by Hutchinson (one vector-Jacobian product per probe vector). This
+    is a **partition-function-free** exact-likelihood estimator for any
+    noise-conditional / diffusion energy — an independent alternative to the AIS
+    `log_likelihood`. Returns per-sample ``log p(x0)`` in nats, shape ``(B,)``;
+    ``bits/dim = -log p / (D·ln 2)``.
+
+    Args:
+        energy: noise-conditional energy ``(x, sigma) -> (B,)``.
+        x0: data batch ``(B, *event)``.
+        sigmas: **descending** noise ladder (largest first, as for
+            `ProbabilityFlowODE`); more rungs = less discretization bias.
+        n_hutchinson: number of trace probe vectors (raise for anisotropic models).
+        eps_dist: ``"rademacher"`` (lower variance) or ``"gaussian"``.
+    """
+    sig = torch.as_tensor(sigmas, dtype=x0.dtype, device=x0.device)
+    if sig.dim() != 1 or len(sig) < 2 or (sig <= 0).any():
+        raise ValueError("sigmas must be a 1D tensor of >= 2 positive values")
+    if (sig.diff() >= 0).any():
+        raise ValueError("sigmas must be strictly decreasing (largest first)")
+    sig = sig.flip(0)  # integrate data -> noise on the ascending ladder
+
+    x = x0.detach()
+    b, d = x.shape[0], x0[0].numel()
+    logdet = x.new_zeros(b)
+    epss = [_hutchinson_eps(x, eps_dist) for _ in range(n_hutchinson)]
+
+    for i in range(len(sig) - 1):
+        sa = sig[i]
+        c = 0.5 * (sig[i + 1] ** 2 - sa**2)
+        xr = x.detach().requires_grad_(True)
+        with torch.enable_grad():
+            e = energy(xr, sa.expand(b))
+            (grad_e,) = torch.autograd.grad(e.sum(), xr, create_graph=True)
+            s = -grad_e
+            trace = x.new_zeros(b)
+            for ep in epss:
+                (jvp,) = torch.autograd.grad(s, xr, grad_outputs=ep, retain_graph=True)
+                trace = trace + (jvp * ep).reshape(b, -1).sum(dim=1)
+            trace = trace / len(epss)
+        x = (x - c * s).detach()
+        logdet = logdet + (-c) * trace.detach()
+
+    sig_max = sig[-1]
+    log_base = -0.5 * x.reshape(b, -1).pow(2).sum(dim=1) / sig_max**2 - 0.5 * d * math.log(
+        2 * math.pi * float(sig_max) ** 2
+    )
+    return log_base + logdet
 
 
 def _as_chains(samples: Tensor) -> Tensor:

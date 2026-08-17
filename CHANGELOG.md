@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.14.0 — unreleased
+
+Exact likelihoods for score-based models, torch-only and closed-form validated.
+
+- **`eval.pf_ode_log_likelihood`** — exact per-sample log-density of any
+  noise-conditional / diffusion energy by integrating the probability-flow ODE
+  with the FFJORD instantaneous change of variables (Hutchinson trace), a
+  partition-function-free alternative to the AIS `log_likelihood`. Validated
+  against the analytic Gaussian log-density.
+- **`nets.AffineCouplingFlow`** — a RealNVP normalizing flow with an exact
+  `log_prob` / `sample`, exposed as a self-normalized energy
+  (`forward(x) = -log_prob(x)`, `log Z = 0`). Validated by its exact log-det
+  identity and a Gaussian fit.
+- **Examples.** `exact_likelihood_ode.py` (PF-ODE bits/dim, OOD separation, AIS
+  cross-check), `train_flow.py` (RealNVP on two-moons).
+
 ## 0.13.0 — 2026-08-17
 
 Research-feature expansion — every addition validated against a closed-form or
