@@ -133,3 +133,24 @@ def test_score_sde_samplers_validate_ladder():
         ebm.ProbabilityFlowODE(torch.tensor([0.1, 0.5]))  # not decreasing
     with pytest.raises(ValueError):
         ebm.PredictorCorrector(torch.tensor([1.0]))  # need >= 2 levels
+
+
+def test_pf_ode_log_likelihood_matches_gaussian_density():
+    import math
+
+    d = 4
+    x = torch.randn(2000, d)
+    analytic = -0.5 * x.pow(2).sum(dim=1) - 0.5 * d * math.log(2 * math.pi)  # log N(x;0,I)
+    sigmas = ebm.geometric_sigmas(10.0, 0.01, 512)
+    ll = ebm.eval.pf_ode_log_likelihood(smoothed_energy, x, sigmas)
+    assert (ll - analytic).abs().mean().item() < 0.15
+
+    # A point at the mode is far more likely than a distant outlier.
+    near = ebm.eval.pf_ode_log_likelihood(smoothed_energy, torch.zeros(1, d), sigmas)
+    far = ebm.eval.pf_ode_log_likelihood(smoothed_energy, 4 * torch.ones(1, d), sigmas)
+    assert near.item() > far.item() + 10
+
+    import pytest
+
+    with pytest.raises(ValueError):
+        ebm.eval.pf_ode_log_likelihood(smoothed_energy, x, torch.tensor([0.1, 0.5]))  # ascending
