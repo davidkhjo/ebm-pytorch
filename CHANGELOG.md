@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.14.0 — unreleased
+## 0.14.0 — 2026-08-17
 
 Exact likelihoods for score-based models, torch-only and closed-form validated.
 
