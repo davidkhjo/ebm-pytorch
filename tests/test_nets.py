@@ -140,3 +140,52 @@ def test_resnet_energy_spectral_norm_trains():
     assert out.shape == (2,)
     out.sum().backward()
     assert all(p.grad is not None for p in net.parameters() if p.requires_grad)
+
+
+def test_affine_coupling_flow_logdet_identity_and_roundtrip():
+    flow = ebm.nets.AffineCouplingFlow(dim=3, n_layers=6, hidden=32)
+    x = torch.randn(5, 3)
+    z, logdet = flow.transform(x)
+    # Change-of-variables log|det| equals the brute-force Jacobian log-det.
+    for i in range(len(x)):
+        jac = torch.autograd.functional.jacobian(
+            lambda v: flow.transform(v.unsqueeze(0))[0].squeeze(0), x[i]
+        )
+        assert abs(logdet[i].item() - torch.linalg.slogdet(jac)[1].item()) < 1e-4
+    # The flow is exactly invertible, and forward is the energy -log p.
+    assert torch.allclose(flow.inverse(z), x, atol=1e-4)
+    assert torch.allclose(flow(x), -flow.log_prob(x))
+    with pytest.raises(ValueError):
+        ebm.nets.AffineCouplingFlow(dim=1)
+
+
+def test_affine_coupling_flow_fits_a_gaussian():
+    import math
+
+    d = 2
+    mu = torch.tensor([1.0, -0.5])
+    cov = torch.tensor([[2.0, 0.6], [0.6, 1.0]])
+    chol = torch.linalg.cholesky(cov)
+    data = torch.randn(8000, d) @ chol.t() + mu
+
+    flow = ebm.nets.AffineCouplingFlow(dim=d, n_layers=8, hidden=64)
+    opt = torch.optim.Adam(flow.parameters(), lr=5e-3)
+    for _ in range(3000):
+        batch = data[torch.randint(0, len(data), (256,))]
+        loss = -flow.log_prob(batch).mean()
+        opt.zero_grad()
+        loss.backward()
+        opt.step()
+
+    test = torch.randn(4000, d) @ chol.t() + mu
+    prec = torch.linalg.inv(cov)
+    c = test - mu
+    analytic = (
+        -0.5 * ((c @ prec) * c).sum(dim=1)
+        - 0.5 * d * math.log(2 * math.pi)
+        - 0.5 * torch.linalg.slogdet(cov)[1]
+    )
+    assert (flow.log_prob(test) - analytic).abs().mean().item() < 0.2
+    samples = flow.sample(8000)
+    assert (samples.mean(0) - mu).abs().max().item() < 0.2
+    assert (torch.cov(samples.T) - cov).abs().max().item() < 0.3
