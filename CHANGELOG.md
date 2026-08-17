@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.13.0 — 2026-08-15
+## 0.13.0 — 2026-08-17
 
 Research-feature expansion — every addition validated against a closed-form or
 known distribution, torch-only at runtime.
