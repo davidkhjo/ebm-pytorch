@@ -5,6 +5,7 @@ from __future__ import annotations
 import torch
 from torch import Tensor
 
+from ebm._functional import mh_accept
 from ebm.energy import EnergyFn
 from ebm.samplers.base import Sampler
 
@@ -167,8 +168,7 @@ class TemperedTransitions(Sampler):
         x_prop, log_w = self._transition(energy, x)
         accept = torch.log(torch.rand_like(log_w)) < log_w
         self._last_accept = accept.float().mean()
-        mask = accept.reshape(-1, *([1] * (x.dim() - 1)))
-        return torch.where(mask, x_prop, x.detach())
+        return mh_accept(x.detach(), x_prop, accept)
 
     def _kernel(self, energy: EnergyFn, x: Tensor, temperature: float) -> Tensor:
         tempered = _Tempered(energy, temperature)

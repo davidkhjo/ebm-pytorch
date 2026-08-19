@@ -5,6 +5,7 @@ from __future__ import annotations
 import torch
 from torch import Tensor, nn
 
+from ebm._functional import validate_descending_sigmas
 from ebm.energy import ConditionalEnergyFn
 from ebm.samplers.base import Sampler
 from ebm.utils import frozen_params
@@ -28,12 +29,7 @@ class AnnealedLangevinDynamics(Sampler):
 
     def __init__(self, sigmas: Tensor, step_size: float = 2e-5, steps_per_sigma: int = 100):
         super().__init__(steps_per_sigma)
-        sigmas = torch.as_tensor(sigmas, dtype=torch.float32)
-        if sigmas.dim() != 1 or (sigmas <= 0).any():
-            raise ValueError("sigmas must be a 1D tensor of positive values")
-        if (sigmas.diff() >= 0).any():
-            raise ValueError("sigmas must be strictly decreasing (largest first)")
-        self.sigmas = sigmas
+        self.sigmas = validate_descending_sigmas(sigmas, min_len=1)
         self.step_size = step_size
 
     # This sampler intentionally extends the base signature: it targets a

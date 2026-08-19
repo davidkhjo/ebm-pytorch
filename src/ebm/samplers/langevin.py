@@ -8,6 +8,7 @@ import torch
 from torch import Tensor
 
 from ebm._functional import flat_sum as _flat_sum
+from ebm._functional import mh_accept
 from ebm.energy import EnergyFn
 from ebm.samplers.base import Sampler
 
@@ -156,5 +157,4 @@ class MALA(Sampler):
 
         accept = torch.log(torch.rand_like(log_alpha)) < log_alpha
         self._last_accept = accept.float().mean()
-        accept = accept.reshape(-1, *([1] * (x.dim() - 1)))
-        return torch.where(accept, proposal.detach(), x.detach())
+        return mh_accept(x.detach(), proposal.detach(), accept)

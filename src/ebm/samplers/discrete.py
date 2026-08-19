@@ -5,6 +5,7 @@ from __future__ import annotations
 import torch
 from torch import Tensor
 
+from ebm._functional import mh_accept
 from ebm.energy import EnergyFn
 from ebm.samplers.base import Sampler
 
@@ -54,8 +55,7 @@ class GibbsWithGradients(Sampler):
 
         accept = torch.log(torch.rand_like(log_alpha)) < log_alpha
         self._last_accept = accept.float().mean()
-        accept = accept.reshape(-1, *([1] * (x.dim() - 1)))
-        return torch.where(accept, proposal, x.detach())
+        return mh_accept(x.detach(), proposal, accept)
 
 
 class CategoricalGibbsWithGradients(Sampler):
@@ -118,5 +118,4 @@ class CategoricalGibbsWithGradients(Sampler):
 
         accept = torch.log(torch.rand_like(log_alpha)) < log_alpha
         self._last_accept = accept.float().mean()
-        accept = accept.reshape(-1, *([1] * (x.dim() - 1)))
-        return torch.where(accept, proposal, x.detach())
+        return mh_accept(x.detach(), proposal, accept)
