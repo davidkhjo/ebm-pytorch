@@ -39,6 +39,8 @@ class DenoisingScoreMatching(nn.Module):
 
     def __init__(self, sigma: float = 0.1):
         super().__init__()
+        if sigma <= 0:
+            raise ValueError("sigma must be positive")
         self.sigma = sigma
 
     def forward(self, energy: EnergyFn, x: Tensor) -> LossOutput:
@@ -124,6 +126,8 @@ class SlicedScoreMatching(nn.Module):
 
     def __init__(self, n_projections: int = 1, vr: bool = True):
         super().__init__()
+        if n_projections < 1:
+            raise ValueError("n_projections must be >= 1")
         self.n_projections = n_projections
         self.vr = vr
 

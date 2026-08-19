@@ -24,17 +24,17 @@ from ebm.nets.noise_conditional import (
 from ebm.nets.targets import BananaEnergy, FunnelEnergy, GaussianMixtureEnergy
 
 __all__ = [
-    "MLPEnergy",
+    "RBM",
+    "AffineCouplingFlow",
+    "BananaEnergy",
     "ConvClassifier",
     "ConvEnergy",
-    "ResNetEnergy",
-    "NoiseConditionalMLPEnergy",
-    "NoiseConditionalConvEnergy",
-    "IsingEnergy",
-    "PottsEnergy",
-    "RBM",
     "FunnelEnergy",
     "GaussianMixtureEnergy",
-    "BananaEnergy",
-    "AffineCouplingFlow",
+    "IsingEnergy",
+    "MLPEnergy",
+    "NoiseConditionalConvEnergy",
+    "NoiseConditionalMLPEnergy",
+    "PottsEnergy",
+    "ResNetEnergy",
 ]

@@ -35,7 +35,7 @@ def split_rhat(samples: Tensor) -> Tensor:
     tensor. Reference: Vehtari et al. (2021), BDA3.
     """
     x = _as_chains(samples)
-    m, n, d = x.shape
+    _, n, _ = x.shape
     half = n // 2
     if half < 2:
         raise ValueError("need at least 4 samples per chain to split and estimate variance")
@@ -111,6 +111,7 @@ def energies(energy: EnergyFn, x: Tensor, batch_size: int = 1024) -> Tensor:
     return torch.cat(out)
 
 
+@torch.no_grad()
 def ood_auroc(energy: EnergyFn, x_in: Tensor, x_out: Tensor) -> float:
     """AUROC for separating in-distribution from OOD data by energy.
 

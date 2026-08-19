@@ -52,7 +52,13 @@ line-length = 100
 src = ["src", "tests"]
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "C4", "PIE", "PERF", "RUF"]
+# The library uses mathematical Unicode (σ, ε, ρ, μ, …) throughout its docs and
+# comments on purpose; the "ambiguous character" rules would fight that.
+ignore = ["RUF001", "RUF002", "RUF003"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E731"]  # lambdas are fine in tests
 
 [tool.mypy]
 files = ["src/ebm"]
@@ -63,6 +69,7 @@ source = ["ebm"]
 
 [tool.coverage.report]
 show_missing = true
+fail_under = 90
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

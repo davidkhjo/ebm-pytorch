@@ -66,8 +66,12 @@ def classifier_two_sample_test(
     separated. A single-number, interpretable complement to `frechet_distance` /
     `mmd`. Pure torch; samples are flattened and standardized.
     """
+    if not 0 < test_frac < 1:
+        raise ValueError("test_frac must be in (0, 1)")
     rf = real.detach().reshape(len(real), -1).float()
     gf = gen.detach().reshape(len(gen), -1).float()
+    if len(rf) < 2 or len(gf) < 2:
+        raise ValueError("classifier_two_sample_test needs at least 2 samples per set")
     x = torch.cat([rf, gf])
     y = torch.cat([x.new_zeros(len(rf)), x.new_ones(len(gf))])
     x = (x - x.mean(0)) / x.std(0).clamp_min(1e-8)

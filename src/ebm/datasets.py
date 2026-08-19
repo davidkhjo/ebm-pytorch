@@ -17,6 +17,18 @@ from pathlib import Path
 import torch
 from torch import Tensor
 
+__all__ = [
+    "checkerboard",
+    "cifar10",
+    "cifar100",
+    "eight_gaussians",
+    "fashion_mnist",
+    "mnist",
+    "rings",
+    "spirals",
+    "two_moons",
+]
+
 
 def two_moons(
     n: int,
@@ -72,7 +84,7 @@ def _load_mnist_like(
         name = f"{prefix}-{kind}-ubyte.gz"
         path = root / (cache_prefix + name)
         if not path.exists():
-            urllib.request.urlretrieve(mirror + name, path)  # noqa: S310
+            urllib.request.urlretrieve(mirror + name, path)
         tensors.append(_parse_idx(gzip.decompress(path.read_bytes())))
 
     images, labels = tensors
@@ -148,7 +160,7 @@ def _load_cifar_like(url, archive_name, members, parser, root, return_labels):
     root.mkdir(parents=True, exist_ok=True)
     archive = root / archive_name
     if not archive.exists():
-        urllib.request.urlretrieve(url, archive)  # noqa: S310
+        urllib.request.urlretrieve(url, archive)
 
     images, labels = [], []
     with tarfile.open(archive, "r:gz") as tar:
@@ -223,6 +235,7 @@ def cifar100(
 
 
 def eight_gaussians(n: int, std: float = 0.15, generator: torch.Generator | None = None) -> Tensor:
+    """``n`` points from a ring of 8 isotropic Gaussians (a classic mode-coverage toy)."""
     angles = torch.arange(8) * (2 * math.pi / 8)
     centers = 2.0 * torch.stack([torch.cos(angles), torch.sin(angles)], dim=1)
     idx = torch.randint(8, (n,), generator=generator)
@@ -230,6 +243,7 @@ def eight_gaussians(n: int, std: float = 0.15, generator: torch.Generator | None
 
 
 def checkerboard(n: int, generator: torch.Generator | None = None) -> Tensor:
+    """``n`` points uniform on a 2D checkerboard of alternating squares."""
     x1 = 4 * torch.rand(n, generator=generator) - 2
     offset = 2 * torch.randint(2, (n,), generator=generator).float()
     x2 = torch.rand(n, generator=generator) + torch.floor(x1) % 2 + offset - 2
@@ -237,6 +251,7 @@ def checkerboard(n: int, generator: torch.Generator | None = None) -> Tensor:
 
 
 def rings(n: int, noise: float = 0.05, generator: torch.Generator | None = None) -> Tensor:
+    """``n`` points on three concentric noisy rings."""
     radii = torch.tensor([0.7, 1.4, 2.1])
     idx = torch.randint(3, (n,), generator=generator)
     theta = 2 * math.pi * torch.rand(n, generator=generator)
@@ -245,6 +260,7 @@ def rings(n: int, noise: float = 0.05, generator: torch.Generator | None = None)
 
 
 def spirals(n: int, noise: float = 0.08, generator: torch.Generator | None = None) -> Tensor:
+    """``n`` points on two interleaved noisy spiral arms."""
     n_a = n // 2
     n_b = n - n_a
     t_a = torch.sqrt(torch.rand(n_a, generator=generator)) * 3 * math.pi
