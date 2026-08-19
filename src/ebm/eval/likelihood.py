@@ -6,16 +6,9 @@ import torch
 from torch import Tensor
 
 from ebm._functional import standard_normal_logprob
+from ebm._ode import sample_eps as _hutchinson_eps
 from ebm.ais import log_likelihood
 from ebm.energy import ConditionalEnergyFn, EnergyFn
-
-
-def _hutchinson_eps(x: Tensor, eps_dist: str) -> Tensor:
-    if eps_dist == "rademacher":
-        return (torch.randint(0, 2, x.shape, device=x.device) * 2 - 1).to(x.dtype)
-    if eps_dist == "gaussian":
-        return torch.randn_like(x)
-    raise ValueError("eps_dist must be 'rademacher' or 'gaussian'")
 
 
 def pf_ode_log_likelihood(

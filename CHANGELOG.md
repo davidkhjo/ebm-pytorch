@@ -15,6 +15,13 @@ Internal cleanup plus the start of a diffusion track.
   noise-conditional energies. Validated: the ancestral sampler recovers a known
   Gaussian's variance; VP-DSM trains a model whose samples match it. Example
   `train_diffusion.py`.
+- **`nets.ContinuousNormalizingFlow`** (FFJORD) — a *trainable* neural-ODE flow,
+  the generalization of `eval.pf_ode_log_likelihood`: a velocity field defines an
+  ODE from data to a Gaussian base and the exact log-density follows the
+  instantaneous change of variables (Hutchinson trace), all torch-only (fixed-step
+  RK4, direct backprop). Trains by maximum likelihood, samples in one reverse pass,
+  and doubles as a self-normalized energy. Validated against a linear-field
+  closed form and exact rotation-invariance. Example `train_cnf.py`.
 
 ## 0.14.0 — 2026-08-17
 

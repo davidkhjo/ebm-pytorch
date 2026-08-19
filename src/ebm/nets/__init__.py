@@ -5,6 +5,7 @@ no batch normalization (it breaks per-sample energies and MCMC), and optional
 spectral normalization for Lipschitz control (Du & Mordatch, 2019).
 """
 
+from ebm.nets.cnf import ContinuousNormalizingFlow
 from ebm.nets.flow import AffineCouplingFlow
 from ebm.nets.lattice import RBM, IsingEnergy, PottsEnergy
 from ebm.nets.mlp_conv import (
@@ -27,6 +28,7 @@ __all__ = [
     "RBM",
     "AffineCouplingFlow",
     "BananaEnergy",
+    "ContinuousNormalizingFlow",
     "ConvClassifier",
     "ConvEnergy",
     "FunnelEnergy",
