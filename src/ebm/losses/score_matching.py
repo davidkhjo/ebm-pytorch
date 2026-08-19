@@ -12,12 +12,10 @@ import math
 import torch
 from torch import Tensor, nn
 
+from ebm._functional import flat_sum as _flat_sum
+from ebm._functional import validate_positive_sigmas
 from ebm.energy import EnergyFn, score
 from ebm.losses.base import LossOutput
-
-
-def _flat_sum(x: Tensor) -> Tensor:
-    return x.reshape(x.shape[0], -1).sum(dim=1)
 
 
 def geometric_sigmas(sigma_max: float, sigma_min: float, n: int) -> Tensor:
@@ -69,10 +67,7 @@ class MultiSigmaDenoisingScoreMatching(nn.Module):
 
     def __init__(self, sigmas: Tensor):
         super().__init__()
-        sigmas = torch.as_tensor(sigmas, dtype=torch.float32)
-        if sigmas.dim() != 1 or (sigmas <= 0).any():
-            raise ValueError("sigmas must be a 1D tensor of positive values")
-        self.register_buffer("sigmas", sigmas)
+        self.register_buffer("sigmas", validate_positive_sigmas(sigmas))
 
     def forward(self, energy, x: Tensor) -> LossOutput:
         batch_size = x.shape[0]

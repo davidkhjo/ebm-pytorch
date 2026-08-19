@@ -5,12 +5,10 @@ from __future__ import annotations
 import torch
 from torch import Tensor
 
+from ebm._functional import flat_sum as _flat_sum
+from ebm._functional import mh_accept
 from ebm.energy import EnergyFn
 from ebm.samplers.base import Sampler
-
-
-def _flat_sum(x: Tensor) -> Tensor:
-    return x.reshape(x.shape[0], -1).sum(dim=1)
 
 
 class HMC(Sampler):
@@ -52,5 +50,4 @@ class HMC(Sampler):
         log_alpha = h0 - h1
         accept = torch.log(torch.rand_like(log_alpha)) < log_alpha
         self._last_accept = accept.float().mean()
-        accept = accept.reshape(-1, *([1] * (x.dim() - 1)))
-        return torch.where(accept, x_new.detach(), x0)
+        return mh_accept(x0, x_new.detach(), accept)

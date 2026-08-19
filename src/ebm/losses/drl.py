@@ -14,6 +14,7 @@ from __future__ import annotations
 import torch
 from torch import Tensor, nn
 
+from ebm._functional import validate_descending_sigmas as _validate_sigmas
 from ebm.energy import ConditionalEnergyFn
 from ebm.losses.base import LossOutput
 from ebm.samplers.base import Sampler
@@ -23,15 +24,6 @@ from ebm.utils import frozen_params
 def _expand(v: Tensor, like: Tensor) -> Tensor:
     """Reshape a per-sample scalar ``(B,)`` for broadcasting against ``like``."""
     return v.reshape(-1, *([1] * (like.dim() - 1)))
-
-
-def _validate_sigmas(sigmas: Tensor) -> Tensor:
-    sigmas = torch.as_tensor(sigmas, dtype=torch.float32)
-    if sigmas.dim() != 1 or len(sigmas) < 2:
-        raise ValueError("sigmas must be a 1D tensor with at least two levels")
-    if (sigmas <= 0).any() or (sigmas.diff() >= 0).any():
-        raise ValueError("sigmas must be positive and strictly decreasing")
-    return sigmas
 
 
 def _recovery_sample(

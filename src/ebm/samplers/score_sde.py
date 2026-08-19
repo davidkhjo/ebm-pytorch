@@ -10,6 +10,7 @@ from __future__ import annotations
 import torch
 from torch import Tensor, nn
 
+from ebm._functional import validate_descending_sigmas
 from ebm.energy import ConditionalEnergyFn
 from ebm.samplers.base import Sampler
 from ebm.utils import frozen_params
@@ -22,12 +23,7 @@ class _ScoreSDESampler(Sampler):
 
     def __init__(self, sigmas: Tensor, steps: int = 1):
         super().__init__(steps)
-        sigmas = torch.as_tensor(sigmas, dtype=torch.float32)
-        if sigmas.dim() != 1 or len(sigmas) < 2 or (sigmas <= 0).any():
-            raise ValueError("sigmas must be a 1D tensor of >= 2 positive values")
-        if (sigmas.diff() >= 0).any():
-            raise ValueError("sigmas must be strictly decreasing (largest first)")
-        self.sigmas = sigmas
+        self.sigmas = validate_descending_sigmas(sigmas, min_len=2)
 
     def _score_at(self, energy: ConditionalEnergyFn, x: Tensor, sigma: Tensor) -> Tensor:
         """Model score ``-∇_x E(x, σ)`` at a fixed scalar ``σ``."""
