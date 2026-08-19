@@ -5,12 +5,9 @@ from __future__ import annotations
 import torch
 from torch import Tensor
 
+from ebm._functional import flat_sum as _flat_sum
 from ebm.energy import EnergyFn
 from ebm.samplers.base import Sampler
-
-
-def _flat_sum(x: Tensor) -> Tensor:
-    return x.reshape(x.shape[0], -1).sum(dim=1)
 
 
 class HMC(Sampler):

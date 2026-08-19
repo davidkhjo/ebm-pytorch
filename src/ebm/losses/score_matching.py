@@ -12,12 +12,9 @@ import math
 import torch
 from torch import Tensor, nn
 
+from ebm._functional import flat_sum as _flat_sum
 from ebm.energy import EnergyFn, score
 from ebm.losses.base import LossOutput
-
-
-def _flat_sum(x: Tensor) -> Tensor:
-    return x.reshape(x.shape[0], -1).sum(dim=1)
 
 
 def geometric_sigmas(sigma_max: float, sigma_min: float, n: int) -> Tensor:
