@@ -86,8 +86,8 @@ def test_fisher_divergence_matches_two_gaussian_closed_form():
     closed = torch.trace(m @ s1 @ m.t()) + (b @ (mu1 - mu2)).pow(2).sum()
 
     x = torch.randn(20000, 2) @ torch.linalg.cholesky(s1).t() + mu1
-    e_a = lambda z: 0.5 * (((z - mu1) @ a) * (z - mu1)).sum(dim=1)  # noqa: E731
-    e_b = lambda z: 0.5 * (((z - mu2) @ b) * (z - mu2)).sum(dim=1)  # noqa: E731
+    e_a = lambda z: 0.5 * (((z - mu1) @ a) * (z - mu1)).sum(dim=1)
+    e_b = lambda z: 0.5 * (((z - mu2) @ b) * (z - mu2)).sum(dim=1)
     assert abs(ebm.eval.fisher_divergence(e_a, e_b, x) - closed.item()) < 0.05
     # Identical models → zero.
     assert ebm.eval.fisher_divergence(e_a, e_a, x) < 1e-6

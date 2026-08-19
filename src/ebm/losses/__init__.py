@@ -13,18 +13,18 @@ from ebm.losses.score_matching import (
 )
 
 __all__ = [
-    "LossOutput",
+    "ConcreteScoreMatching",
     "ContrastiveDivergence",
+    "DenoisingScoreMatching",
     "DiffusionRecoveryLikelihood",
-    "drl_sample",
     "EnergyDiscrepancy",
+    "ExactScoreMatching",
+    "LossOutput",
+    "MultiSigmaDenoisingScoreMatching",
+    "NoiseContrastiveEstimation",
     "PseudoLikelihood",
     "RatioMatching",
-    "ConcreteScoreMatching",
-    "DenoisingScoreMatching",
-    "ExactScoreMatching",
-    "MultiSigmaDenoisingScoreMatching",
     "SlicedScoreMatching",
-    "NoiseContrastiveEstimation",
+    "drl_sample",
     "geometric_sigmas",
 ]

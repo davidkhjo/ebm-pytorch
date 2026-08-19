@@ -18,6 +18,7 @@ bracket the true ``log Z``: when the gap is small, both are trustworthy.
 
 from __future__ import annotations
 
+import itertools
 import math
 from dataclasses import dataclass
 from typing import Protocol, cast
@@ -107,7 +108,7 @@ def _anneal(
 
     try:
         with frozen_params(module):
-            for beta_prev, beta_next in zip(betas[:-1], betas[1:], strict=True):
+            for beta_prev, beta_next in itertools.pairwise(betas):
                 with torch.no_grad():
                     # log γ_{β'}(x) - log γ_β(x) = Δβ (-E(x) - log p₀(x)).
                     delta = float(beta_next - beta_prev)

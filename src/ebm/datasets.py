@@ -18,15 +18,15 @@ import torch
 from torch import Tensor
 
 __all__ = [
-    "two_moons",
-    "eight_gaussians",
     "checkerboard",
-    "rings",
-    "spirals",
-    "mnist",
-    "fashion_mnist",
     "cifar10",
     "cifar100",
+    "eight_gaussians",
+    "fashion_mnist",
+    "mnist",
+    "rings",
+    "spirals",
+    "two_moons",
 ]
 
 
@@ -84,7 +84,7 @@ def _load_mnist_like(
         name = f"{prefix}-{kind}-ubyte.gz"
         path = root / (cache_prefix + name)
         if not path.exists():
-            urllib.request.urlretrieve(mirror + name, path)  # noqa: S310
+            urllib.request.urlretrieve(mirror + name, path)
         tensors.append(_parse_idx(gzip.decompress(path.read_bytes())))
 
     images, labels = tensors
@@ -160,7 +160,7 @@ def _load_cifar_like(url, archive_name, members, parser, root, return_labels):
     root.mkdir(parents=True, exist_ok=True)
     archive = root / archive_name
     if not archive.exists():
-        urllib.request.urlretrieve(url, archive)  # noqa: S310
+        urllib.request.urlretrieve(url, archive)
 
     images, labels = [], []
     with tarfile.open(archive, "r:gz") as tar:

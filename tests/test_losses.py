@@ -157,7 +157,7 @@ def test_energy_discrepancy_shapes_and_validation():
 
     # No sampler, so the loss is finite with w>0 even for a wild energy.
     assert torch.isfinite(ebm.EnergyDiscrepancy(w_stable=0.0)(net, torch.randn(8, 2)).loss)
-    for bad in (dict(sigma=0.0), dict(m_particles=0), dict(w_stable=-1.0)):
+    for bad in ({"sigma": 0.0}, {"m_particles": 0}, {"w_stable": -1.0}):
         with pytest.raises(ValueError):
             ebm.EnergyDiscrepancy(**bad)
 

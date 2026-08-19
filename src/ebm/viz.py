@@ -9,7 +9,7 @@ from torch import Tensor
 
 from ebm.energy import EnergyFn
 
-__all__ = ["energy_contour", "plot_samples", "show_images", "energy_histogram"]
+__all__ = ["energy_contour", "energy_histogram", "plot_samples", "show_images"]
 
 
 def _require_matplotlib():

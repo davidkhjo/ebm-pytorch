@@ -19,7 +19,7 @@ def test_push_writes_back_to_sampled_slots():
 
 
 def test_reinit_prob_one_always_reinitializes():
-    init_fn = lambda shape: torch.full(shape, 42.0)  # noqa: E731
+    init_fn = lambda shape: torch.full(shape, 42.0)
     buf = ebm.ReplayBuffer(capacity=20, shape=(2,), reinit_prob=1.0, init_fn=init_fn)
     buf.data.zero_()
     x = buf.sample(10)
