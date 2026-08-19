@@ -6,6 +6,8 @@ eval. Kept private (leading underscore module) so the public API is unchanged.
 
 from __future__ import annotations
 
+import math
+
 import torch
 from torch import Tensor
 
@@ -41,6 +43,12 @@ def validate_positive_sigmas(sigmas: Tensor) -> Tensor:
     if sigmas.dim() != 1 or (sigmas <= 0).any():
         raise ValueError("sigmas must be a 1D tensor of positive values")
     return sigmas
+
+
+def standard_normal_logprob(z: Tensor, scale: float = 1.0) -> Tensor:
+    """``log N(z; 0, scale²·I)`` summed over all non-batch dims, returning ``(B,)``."""
+    d = z[0].numel()
+    return -0.5 * flat_sum(z.pow(2)) / scale**2 - 0.5 * d * math.log(2 * math.pi * scale**2)
 
 
 def median_sq_dist(d2: Tensor) -> Tensor:

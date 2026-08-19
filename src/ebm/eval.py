@@ -13,7 +13,7 @@ import math
 import torch
 from torch import Tensor, nn
 
-from ebm._functional import rbf_bandwidth
+from ebm._functional import rbf_bandwidth, standard_normal_logprob
 from ebm.ais import AISResult, ais_log_z, log_likelihood, reverse_ais_log_z
 from ebm.energy import ConditionalEnergyFn, EnergyFn, score
 
@@ -83,7 +83,7 @@ def pf_ode_log_likelihood(
     sig = sig.flip(0)  # integrate data -> noise on the ascending ladder
 
     x = x0.detach()
-    b, d = x.shape[0], x0[0].numel()
+    b = x.shape[0]
     logdet = x.new_zeros(b)
     epss = [_hutchinson_eps(x, eps_dist) for _ in range(n_hutchinson)]
 
@@ -103,11 +103,7 @@ def pf_ode_log_likelihood(
         x = (x - c * s).detach()
         logdet = logdet + (-c) * trace.detach()
 
-    sig_max = sig[-1]
-    log_base = -0.5 * x.reshape(b, -1).pow(2).sum(dim=1) / sig_max**2 - 0.5 * d * math.log(
-        2 * math.pi * float(sig_max) ** 2
-    )
-    return log_base + logdet
+    return standard_normal_logprob(x, scale=float(sig[-1])) + logdet
 
 
 def _as_chains(samples: Tensor) -> Tensor:

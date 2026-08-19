@@ -7,13 +7,14 @@ spectral normalization for Lipschitz control (Du & Mordatch, 2019).
 
 from __future__ import annotations
 
-import math
 from collections.abc import Sequence
 
 import torch
 from torch import Tensor, nn
 from torch.nn import functional as F
 from torch.nn.utils.parametrizations import spectral_norm
+
+from ebm._functional import standard_normal_logprob
 
 
 def _binary_states(n: int, *, device=None, dtype=torch.float32) -> Tensor:
@@ -579,8 +580,7 @@ class AffineCouplingFlow(nn.Module):
 
     def log_prob(self, x: Tensor) -> Tensor:
         z, logdet = self.transform(x)
-        log_base = -0.5 * z.pow(2).sum(dim=-1) - 0.5 * self.dim * math.log(2 * math.pi)
-        return log_base + logdet
+        return standard_normal_logprob(z) + logdet
 
     def sample(self, n: int) -> Tensor:
         z = torch.randn(n, self.dim, device=next(self.parameters()).device)
