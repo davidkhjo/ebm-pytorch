@@ -316,3 +316,10 @@ def test_nce_optimum_for_matching_model_and_noise():
         loss_fn.log_z.fill_(math.log(2 * math.pi))  # log Z of N(0, I) in 2D
     out = loss_fn(net, torch.randn(2000, 2))
     assert abs(out.loss.item() - 2 * math.log(2)) < 0.05
+
+
+def test_score_matching_validation_guards():
+    with pytest.raises(ValueError):
+        ebm.DenoisingScoreMatching(sigma=0.0)
+    with pytest.raises(ValueError):
+        ebm.SlicedScoreMatching(n_projections=0)

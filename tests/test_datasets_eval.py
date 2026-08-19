@@ -430,3 +430,10 @@ def test_two_moons_labels():
     assert set(y.unique().tolist()) == {0, 1}
     # Upper moon (label 0) sits higher on average than the lower moon.
     assert x[y == 0][:, 1].mean() > x[y == 1][:, 1].mean()
+
+
+def test_classifier_two_sample_test_validation():
+    with pytest.raises(ValueError):
+        ebm.eval.classifier_two_sample_test(torch.randn(100, 2), torch.randn(100, 2), test_frac=0.0)
+    with pytest.raises(ValueError):
+        ebm.eval.classifier_two_sample_test(torch.randn(1, 2), torch.randn(1, 2))
