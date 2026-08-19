@@ -7,6 +7,7 @@ import math
 import torch
 from torch import Tensor
 
+from ebm._functional import median_sq_dist
 from ebm.energy import EnergyFn
 from ebm.samplers.base import Sampler
 
@@ -50,8 +51,7 @@ class SVGD(Sampler):
         if self.bandwidth is not None:
             h2 = self.bandwidth**2
         else:
-            off = d2[~torch.eye(n, dtype=torch.bool, device=x.device)]
-            h2 = float((off.median() / math.log(max(n, 2))).clamp_min(1e-8))
+            h2 = float((median_sq_dist(d2) / math.log(max(n, 2))).clamp_min(1e-8))
         k = torch.exp(-d2 / (2 * h2))  # (n, n), symmetric
 
         drive = k @ s / n

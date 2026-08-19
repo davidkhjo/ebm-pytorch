@@ -41,3 +41,22 @@ def validate_positive_sigmas(sigmas: Tensor) -> Tensor:
     if sigmas.dim() != 1 or (sigmas <= 0).any():
         raise ValueError("sigmas must be a 1D tensor of positive values")
     return sigmas
+
+
+def median_sq_dist(d2: Tensor) -> Tensor:
+    """Median of the off-diagonal entries of an ``(n, n)`` squared-distance matrix."""
+    n = d2.shape[0]
+    return d2[~torch.eye(n, dtype=torch.bool, device=d2.device)].median()
+
+
+def rbf_bandwidth(d2: Tensor, bandwidth: float | None) -> float:
+    """RBF bandwidth: the median heuristic (``sqrt`` of the median squared distance)
+    when ``bandwidth`` is ``None``; raises if it (or an explicit value) is ``<= 0``."""
+    if bandwidth is None:
+        bandwidth = float(median_sq_dist(d2).sqrt())
+    if bandwidth <= 0:
+        raise ValueError(
+            "RBF bandwidth is 0 (the median pairwise distance vanished — the "
+            "samples are nearly identical); pass an explicit positive bandwidth"
+        )
+    return bandwidth
