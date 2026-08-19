@@ -111,6 +111,7 @@ def energies(energy: EnergyFn, x: Tensor, batch_size: int = 1024) -> Tensor:
     return torch.cat(out)
 
 
+@torch.no_grad()
 def ood_auroc(energy: EnergyFn, x_in: Tensor, x_out: Tensor) -> float:
     """AUROC for separating in-distribution from OOD data by energy.
 
