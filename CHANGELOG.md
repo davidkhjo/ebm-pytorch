@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.15.0 — unreleased
+
+Internal cleanup plus the start of a diffusion track.
+
+- **Housekeeping (no API change).** Deduplicated shared helpers into a private
+  `ebm/_functional.py`, and split the two largest modules into packages
+  (`nets/`, `eval/`) mirroring `losses/` and `samplers/`. Added input-validation
+  guards, a coverage gate, and viz tests.
+- **Variance-preserving diffusion (DDPM).** `VPSchedule` (linear/cosine),
+  `VPDenoisingScoreMatching` (ε-prediction loss where the ε-net is derived from
+  the energy, `ε_θ = √(1-ᾱ_t)·∇E`), and `DDPMAncestralSampler` — the
+  variance-preserving counterpart to the VE/NCSN stack, reusing the
+  noise-conditional energies. Validated: the ancestral sampler recovers a known
+  Gaussian's variance; VP-DSM trains a model whose samples match it. Example
+  `train_diffusion.py`.
+
 ## 0.14.0 — 2026-08-17
 
 Exact likelihoods for score-based models, torch-only and closed-form validated.

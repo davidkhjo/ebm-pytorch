@@ -45,8 +45,8 @@ returns `LossOutput(loss, metrics, x_neg)`; call `out.loss.backward()`).
 | Piece | Contents |
 |---|---|
 | **Energies** | any callable `(B, *shape) -> (B,)`; `nets.MLPEnergy` / `ConvEnergy` / `ResNetEnergy` / `ConvClassifier` (SiLU, optional spectral norm, no batch norm), `nets.RBM` (Bernoulli RBM with exact `log_z`), `nets.IsingEnergy` / `PottsEnergy` (discrete lattices), `nets.FunnelEnergy` / `GaussianMixtureEnergy` / `BananaEnergy` (closed-form targets), `nets.AffineCouplingFlow` (RealNVP — exact-likelihood flow / self-normalized energy), noise-conditional variants for NCSN; `EnergyModel`, `ebm.score` |
-| **Samplers** | `LangevinDynamics` (ULA/SGLD), `MALA`, `HMC`, `UnderdampedLangevin` (SGHMC), `PreconditionedLangevin`, `ParallelTempering` (replica exchange), `TemperedTransitions`, `SVGD` (Stein variational), `GibbsSampler` (block Gibbs), `GibbsWithGradients` + `CategoricalGibbsWithGradients`, `AnnealedLangevinDynamics`, `ProbabilityFlowODE` / `PredictorCorrector` (score-SDE) |
-| **Losses** | `ContrastiveDivergence` (CD-k / persistent CD), `DiffusionRecoveryLikelihood` + `drl_sample`, `DenoisingScoreMatching` / `MultiSigmaDenoisingScoreMatching` (NCSN), `SlicedScoreMatching`, `ExactScoreMatching`, `EnergyDiscrepancy` (MCMC-free), `PseudoLikelihood` / `RatioMatching` / `ConcreteScoreMatching` (MCMC-free, discrete), `NoiseContrastiveEstimation`, `JEMLoss` |
+| **Samplers** | `LangevinDynamics` (ULA/SGLD), `MALA`, `HMC`, `UnderdampedLangevin` (SGHMC), `PreconditionedLangevin`, `ParallelTempering` (replica exchange), `TemperedTransitions`, `SVGD` (Stein variational), `GibbsSampler` (block Gibbs), `GibbsWithGradients` + `CategoricalGibbsWithGradients`, `AnnealedLangevinDynamics`, `ProbabilityFlowODE` / `PredictorCorrector` (score-SDE), `DDPMAncestralSampler` (VP diffusion) |
+| **Losses** | `ContrastiveDivergence` (CD-k / persistent CD), `DiffusionRecoveryLikelihood` + `drl_sample`, `DenoisingScoreMatching` / `MultiSigmaDenoisingScoreMatching` (NCSN), `VPDenoisingScoreMatching` (DDPM), `SlicedScoreMatching`, `ExactScoreMatching`, `EnergyDiscrepancy` (MCMC-free), `PseudoLikelihood` / `RatioMatching` / `ConcreteScoreMatching` (MCMC-free, discrete), `NoiseContrastiveEstimation`, `JEMLoss` |
 | **Composition** | `SumEnergy` (product of experts), `MixtureEnergy`, `TemperedEnergy` — energies compose like densities and nest |
 | **Training** | thin `Trainer` (device, EMA, supervised batches, `save`/`load` checkpointing), `ReplayBuffer`, `EMA` |
 | **Eval** | `ais_log_z` / `reverse_ais_log_z` (bracket `log Z`), `pf_ode_log_likelihood` (exact likelihood via the probability-flow ODE), `bits_per_dim`, `frechet_distance` (FID), `mmd`, `precision_recall`, `inception_score`, `kernel_stein_discrepancy` / `classifier_two_sample_test` / `fisher_divergence` (goodness-of-fit), `mutual_information` (MINE), `ood_auroc`, `effective_sample_size` / `split_rhat` (MCMC diagnostics) |
@@ -63,6 +63,7 @@ Runnable scripts in [`examples/`](https://github.com/davidkhjo/ebmkit/tree/main/
 - `train_ising.py` / `train_potts.py` — discrete lattices via (categorical) Gibbs-with-Gradients
 - `train_ncsn.py` — score-based generation: multi-sigma denoising + annealed Langevin
 - `deterministic_sampling.py` — annealed Langevin vs the (deterministic) probability-flow ODE vs predictor-corrector
+- `train_diffusion.py` — a variance-preserving (DDPM) diffusion, energy-parameterized
 - `exact_likelihood_ode.py` — exact bits/dim for a score model via the probability-flow ODE
 - `train_flow.py` — a RealNVP normalizing flow with exact density and sampling
 - `train_cifar_ood.py` — energy-based OOD at color scale (CIFAR-10 vs CIFAR-100)

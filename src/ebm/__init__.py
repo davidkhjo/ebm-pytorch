@@ -8,6 +8,7 @@ from ebm import datasets, eval, nets, viz
 from ebm.ais import AISResult, ais_log_z, log_likelihood, reverse_ais_log_z
 from ebm.buffer import ReplayBuffer
 from ebm.compose import MixtureEnergy, SumEnergy, TemperedEnergy
+from ebm.diffusion import DDPMAncestralSampler, VPDenoisingScoreMatching, VPSchedule
 from ebm.energy import ConditionalEnergyFn, EnergyFn, EnergyModel, score
 from ebm.jem import ClassifierEnergy, ConditionalEnergy, JEMLoss
 from ebm.losses import (
@@ -46,7 +47,7 @@ from ebm.samplers import (
 from ebm.training import Trainer
 from ebm.utils import EMA
 
-__version__ = "0.14.0"
+__version__ = "0.15.0"
 
 __all__ = [
     "EMA",
@@ -61,6 +62,7 @@ __all__ = [
     "ConditionalEnergy",
     "ConditionalEnergyFn",
     "ContrastiveDivergence",
+    "DDPMAncestralSampler",
     "DenoisingScoreMatching",
     "DiffusionRecoveryLikelihood",
     "EnergyDiscrepancy",
@@ -89,6 +91,8 @@ __all__ = [
     "TemperedTransitions",
     "Trainer",
     "UnderdampedLangevin",
+    "VPDenoisingScoreMatching",
+    "VPSchedule",
     "ais_log_z",
     "datasets",
     "drl_sample",
