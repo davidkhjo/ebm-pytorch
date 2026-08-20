@@ -189,3 +189,81 @@ def test_affine_coupling_flow_fits_a_gaussian():
     samples = flow.sample(8000)
     assert (samples.mean(0) - mu).abs().max().item() < 0.2
     assert (torch.cov(samples.T) - cov).abs().max().item() < 0.3
+
+
+def test_spline_flow_invertible_and_logdet_across_domain():
+    # Run in double precision: the rational-quadratic map is *exactly* invertible,
+    # so this pins the math (float32 loses a few digits per layer, as all RQ-spline
+    # flows do). Perturb the zero-init net so the spline is genuinely nonlinear.
+    flow = ebm.nets.NeuralSplineCouplingFlow(dim=3, n_layers=4, num_bins=8, bound=3.0).double()
+    with torch.no_grad():
+        for p in flow.parameters():
+            p.add_(0.4 * torch.randn_like(p))
+    x = (6 * torch.randn(6, 3)).double()  # spans well past the [-3, 3] bound into the tails
+    z, logdet = flow.transform(x)
+    assert torch.allclose(flow.inverse(z), x, atol=1e-8)  # exact roundtrip incl. tails
+    for i in range(len(x)):
+        jac = torch.autograd.functional.jacobian(
+            lambda v: flow.transform(v.unsqueeze(0))[0].squeeze(0), x[i]
+        )
+        assert abs(logdet[i].item() - torch.linalg.slogdet(jac)[1].item()) < 1e-8
+    assert torch.allclose(flow(x), -flow.log_prob(x))
+    with pytest.raises(ValueError):
+        ebm.nets.NeuralSplineCouplingFlow(dim=1)
+
+
+def test_spline_flow_fits_a_gaussian():
+    import math
+
+    d = 2
+    # The spline reshapes only within [-bound, bound] (identity tails), so the
+    # target's mass must sit inside it — here a zero-centred Gaussian well within ±3.
+    mu = torch.zeros(d)
+    cov = torch.tensor([[0.7, 0.3], [0.3, 0.6]])
+    chol = torch.linalg.cholesky(cov)
+    data = torch.randn(8000, d) @ chol.t() + mu
+
+    flow = ebm.nets.NeuralSplineCouplingFlow(dim=d, n_layers=6, num_bins=8, bound=3.0)
+    opt = torch.optim.Adam(flow.parameters(), lr=5e-3)
+    for _ in range(2000):
+        batch = data[torch.randint(0, len(data), (256,))]
+        loss = -flow.log_prob(batch).mean()
+        opt.zero_grad()
+        loss.backward()
+        opt.step()
+
+    test = torch.randn(4000, d) @ chol.t() + mu
+    prec = torch.linalg.inv(cov)
+    c = test - mu
+    analytic = (
+        -0.5 * ((c @ prec) * c).sum(dim=1)
+        - 0.5 * d * math.log(2 * math.pi)
+        - 0.5 * torch.linalg.slogdet(cov)[1]
+    )
+    assert (flow.log_prob(test) - analytic).abs().mean().item() < 0.2
+    # It is practically invertible in float32 after training.
+    z, _ = flow.transform(test)
+    assert torch.allclose(flow.inverse(z), test, atol=1e-2)
+
+
+def test_spline_flow_fits_two_moons():
+    data = ebm.datasets.two_moons(8000)
+    flow = ebm.nets.NeuralSplineCouplingFlow(dim=2, n_layers=6, num_bins=8, bound=3.0)
+    opt = torch.optim.Adam(flow.parameters(), lr=5e-3)
+    for _ in range(2000):
+        batch = data[torch.randint(0, len(data), (256,))]
+        loss = -flow.log_prob(batch).mean()
+        opt.zero_grad()
+        loss.backward()
+        opt.step()
+
+    samples = flow.sample(8000)
+    # Samples land on the data manifold (both crescents), far closer than a Gaussian.
+    to_data = ebm.eval.mmd(samples, data)
+    to_normal = ebm.eval.mmd(torch.randn(8000, 2), data)
+    assert to_data < 0.01
+    assert to_data < 0.2 * to_normal
+    # Both arcs are covered (the moons split above/below the x-axis near the centre).
+    upper = ((samples[:, 0].abs() < 0.5) & (samples[:, 1] > 0.3)).float().mean()
+    lower = ((samples[:, 0].abs() < 0.5) & (samples[:, 1] < -0.0)).float().mean()
+    assert upper > 0.02 and lower > 0.02
