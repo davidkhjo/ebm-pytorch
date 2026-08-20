@@ -61,6 +61,7 @@ def temperature_scale(
     ``p(y|x)`` without changing the argmax. Fit on a **held-out** split. Optimizes
     ``log T`` with LBFGS so ``T`` stays positive without a constraint.
     """
+    logits = logits.detach()  # only T is optimized, never the classifier
     log_t = torch.zeros(1, device=logits.device, requires_grad=True)
     opt = torch.optim.LBFGS([log_t], lr=lr, max_iter=max_iter)
 

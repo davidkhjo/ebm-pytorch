@@ -2,7 +2,13 @@
 
 ## 0.15.0 — unreleased
 
-Internal cleanup plus the start of a diffusion track.
+Internal cleanup plus a diffusion track, exact-likelihood flows, and
+conditional-generation / calibration tools.
+
+- **Classifier-free guidance & calibration.** `GuidedEnergy` (+
+  `ClassifierEnergy.guide`) — `Ẽ_w(x|y) = (1+w)E(x|y) − w E(x)` to sharpen class
+  selection; and `eval.expected_calibration_error` / `reliability_curve` /
+  `temperature_scale` for trustworthy JEM classifiers. Example `jem_guidance.py`.
 
 - **Housekeeping (no API change).** Deduplicated shared helpers into a private
   `ebm/_functional.py`, and split the two largest modules into packages
