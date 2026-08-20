@@ -54,3 +54,31 @@ def test_energy_contour_plot_samples_and_histogram():
     )
     assert ax3.get_xlabel() == "energy"
     assert len(ax3.get_legend().get_texts()) == 2
+
+
+def test_mcmc_diagnostic_plots_smoke_and_rank_uniformity():
+    import matplotlib
+
+    matplotlib.use("Agg")
+
+    # Well-mixed chains: N(0,1) i.i.d.; one offset chain to skew the rank plot.
+    good = torch.randn(6, 500, 2)
+    ax = ebm.viz.autocorrelation_plot(good, max_lag=20, dim=0)
+    assert len(ax.patches) == 21  # one bar per lag 0..20
+
+    ax2 = ebm.viz.trace_plot(good, dim=1, max_chains=4)
+    assert len(ax2.lines) == 4  # capped at max_chains
+
+    # Rank uniformity: matched chains give ~flat per-chain rank histograms; an
+    # offset chain concentrates in the top ranks.
+    ranks = ebm.viz._chain_ranks(good, dim=0)
+    m, n = ranks.shape
+    counts = torch.histc(ranks[0], bins=10, min=1, max=m * n)
+    assert counts.std().item() < 0.5 * (n / 10)  # roughly uniform
+
+    offset = torch.cat([torch.randn(5, 500, 2), 5.0 + torch.randn(1, 500, 2)], dim=0)
+    off_ranks = ebm.viz._chain_ranks(offset, dim=0)
+    top = (off_ranks[-1] > 0.9 * off_ranks.numel()).float().mean().item()
+    assert top > 0.5  # the shifted chain owns the top ranks
+    ax3 = ebm.viz.rank_plot(offset, dim=0, bins=10)
+    assert len(ax3.patches) > 0
