@@ -11,6 +11,7 @@ from ebm.compose import EnsembleEnergy, MixtureEnergy, SumEnergy, TemperedEnergy
 from ebm.diffusion import DDPMAncestralSampler, VPDenoisingScoreMatching, VPSchedule
 from ebm.energy import ConditionalEnergyFn, EnergyFn, EnergyModel, score
 from ebm.jem import ClassifierEnergy, ConditionalEnergy, GuidedEnergy, JEMLoss
+from ebm.latent import LatentEBM
 from ebm.losses import (
     ConcreteScoreMatching,
     ContrastiveDivergence,
@@ -48,7 +49,7 @@ from ebm.samplers import (
 from ebm.training import Trainer
 from ebm.utils import EMA
 
-__version__ = "0.15.0"
+__version__ = "0.16.0"
 
 __all__ = [
     "EMA",
@@ -77,6 +78,7 @@ __all__ = [
     "GuidedEnergy",
     "JEMLoss",
     "LangevinDynamics",
+    "LatentEBM",
     "LossOutput",
     "MixtureEnergy",
     "MultiSigmaDenoisingScoreMatching",
