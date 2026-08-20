@@ -196,3 +196,52 @@ def test_preconditioned_langevin_handles_anisotropy():
     assert abs(std[1].item() - 5.0) < 0.8
     with pytest.raises(ValueError):
         ebm.PreconditionedLangevin(precond=torch.tensor([1.0, -1.0]))
+
+
+def _correlated_gaussian(cov):
+    precision = torch.linalg.inv(cov)
+
+    def energy(x):
+        return 0.5 * ((x @ precision) * x).sum(dim=1)
+
+    return energy
+
+
+def test_adaptive_mala_tunes_step_size_to_target_accept():
+    # A wildly wrong initial step is driven to the 0.574-optimal acceptance,
+    # and the frozen chain recovers a correlated Gaussian's covariance.
+    cov = torch.tensor([[2.0, 1.2], [1.2, 1.5]])
+    sampler = ebm.AdaptiveMALA(step_size=0.1, steps=600, warmup=1000)
+    samples = sampler.sample(_correlated_gaussian(cov), 3 * torch.randn(4000, 2))
+    assert abs(sampler.last_accept_rate - 0.574) < 0.05
+    assert (torch.cov(samples.T) - cov).abs().max().item() < 0.15
+    assert not samples.requires_grad
+    assert sampler.preconditioner is None
+
+
+def test_adaptive_mala_preconditioner_learns_the_scales():
+    # Target N(0, diag(25, 0.25)) — condition number 100. The estimated diagonal
+    # metric should recover that ~100:1 ratio, and acceptance still hits target.
+    cov = torch.diag(torch.tensor([25.0, 0.25]))
+    sampler = ebm.AdaptiveMALA(step_size=0.1, steps=600, warmup=1000, precondition=True)
+    samples = sampler.sample(_correlated_gaussian(cov), torch.randn(4000, 2))
+    m = sampler.preconditioner
+    assert m is not None
+    ratio = (m[0] / m[1]).item()
+    assert 40.0 < ratio < 250.0  # true condition number is 100
+    assert abs(m.log().mean().exp().item() - 1.0) < 1e-4  # geometric mean 1
+    assert abs(sampler.last_accept_rate - 0.574) < 0.06
+    assert abs(samples.std(0)[0].item() - 5.0) < 0.7  # sqrt(25)
+    assert abs(samples.std(0)[1].item() - 0.5) < 0.1  # sqrt(0.25)
+
+
+def test_adaptive_mala_zero_warmup_keeps_step_size_and_validates():
+    sampler = ebm.AdaptiveMALA(step_size=0.2, steps=8, warmup=0)
+    traj = sampler.sample(quadratic_energy, torch.randn(256, 2), return_trajectory=True)
+    assert traj.shape == (9, 256, 2)  # init + 8 transitions
+    assert sampler.step_size == 0.2  # nothing to adapt
+    assert isinstance(sampler.last_accept_rate, float)
+    with pytest.raises(ValueError):
+        ebm.AdaptiveMALA(target_accept=1.5)
+    with pytest.raises(ValueError):
+        ebm.AdaptiveMALA(warmup=-1)
