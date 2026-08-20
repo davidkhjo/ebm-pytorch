@@ -49,6 +49,10 @@ class ClassifierEnergy(nn.Module):
         """Energy function of ``x`` with the class fixed, for conditional sampling."""
         return ConditionalEnergy(self, y)
 
+    def guide(self, y: Tensor | int, weight: float = 1.0) -> GuidedEnergy:
+        """Classifier-free-guided energy of ``x`` for class ``y`` (weight ``w``)."""
+        return GuidedEnergy(self, y, weight)
+
 
 class ConditionalEnergy(nn.Module):
     """``E(x, y)`` with ``y`` held fixed — an energy function of ``x`` alone.
@@ -64,6 +68,39 @@ class ConditionalEnergy(nn.Module):
 
     def forward(self, x: Tensor) -> Tensor:
         return self.energy.conditional(x, self.y)
+
+
+class GuidedEnergy(nn.Module):
+    """Classifier-free-guided energy ``Ẽ_w(x|y) = (1+w)·E(x|y) − w·E(x)``.
+
+    Sharpens class selection by amplifying the class-conditional energy relative to
+    the marginal — the energy of ``p̃(x|y) ∝ p(x|y)^{1+w} / p(x)^w`` (Ho & Salimans,
+    2022). ``weight=0`` is the plain conditional; larger ``weight`` pushes samples
+    toward regions where class ``y`` dominates. Both branches come from the *same*
+    `ClassifierEnergy` (no label-dropout needed), and ``logits`` is computed once.
+    An ``nn.Module`` (not a closure) so samplers freeze the classifier during
+    sampling. Note: for large ``weight`` the guided energy can become
+    non-normalizable — keep ``weight`` modest and prefer MALA/HMC (which reject
+    divergent proposals).
+    """
+
+    def __init__(self, energy: ClassifierEnergy, y: Tensor | int, weight: float = 1.0):
+        super().__init__()
+        if weight < 0:
+            raise ValueError("guidance weight must be >= 0")
+        self.energy = energy
+        self.y = y
+        self.weight = weight
+
+    def forward(self, x: Tensor) -> Tensor:
+        logits = self.energy.logits(x)
+        if isinstance(self.y, int):
+            e_cond = -logits[:, self.y]
+        else:
+            y = self.y.to(logits.device)
+            e_cond = -logits.gather(1, y.reshape(-1, 1)).squeeze(1)
+        e_marg = -logits.logsumexp(dim=1)
+        return (1 + self.weight) * e_cond - self.weight * e_marg
 
 
 class JEMLoss(nn.Module):
