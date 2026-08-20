@@ -12,8 +12,10 @@ from ebm.eval.calibration import (
     temperature_scale,
 )
 from ebm.eval.diagnostics import (
+    autocorrelation,
     effective_sample_size,
     energies,
+    ensemble_disagreement,
     ood_auroc,
     split_rhat,
 )
@@ -34,10 +36,12 @@ from ebm.eval.sample_quality import (
 __all__ = [
     "AISResult",
     "ais_log_z",
+    "autocorrelation",
     "bits_per_dim",
     "classifier_two_sample_test",
     "effective_sample_size",
     "energies",
+    "ensemble_disagreement",
     "expected_calibration_error",
     "fisher_divergence",
     "frechet_distance",

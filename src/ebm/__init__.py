@@ -7,7 +7,7 @@ An energy function is any callable ``(B, *event_shape) -> (B,)``.
 from ebm import datasets, eval, nets, viz
 from ebm.ais import AISResult, ais_log_z, log_likelihood, reverse_ais_log_z
 from ebm.buffer import ReplayBuffer
-from ebm.compose import MixtureEnergy, SumEnergy, TemperedEnergy
+from ebm.compose import EnsembleEnergy, MixtureEnergy, SumEnergy, TemperedEnergy
 from ebm.diffusion import DDPMAncestralSampler, VPDenoisingScoreMatching, VPSchedule
 from ebm.energy import ConditionalEnergyFn, EnergyFn, EnergyModel, score
 from ebm.jem import ClassifierEnergy, ConditionalEnergy, GuidedEnergy, JEMLoss
@@ -70,6 +70,7 @@ __all__ = [
     "EnergyDiscrepancy",
     "EnergyFn",
     "EnergyModel",
+    "EnsembleEnergy",
     "ExactScoreMatching",
     "GibbsSampler",
     "GibbsWithGradients",
