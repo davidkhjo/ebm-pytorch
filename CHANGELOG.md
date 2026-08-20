@@ -5,6 +5,14 @@
 Internal cleanup plus a diffusion track, exact-likelihood flows, and
 conditional-generation / calibration tools.
 
+- **Self-tuning sampler.** `AdaptiveMALA` — a MALA that tunes its own
+  `step_size` by Nesterov dual averaging (Hoffman & Gelman 2014) to the
+  MALA-optimal 0.574 acceptance during a warmup, then freezes and samples
+  unbiasedly. `precondition=True` estimates a diagonal metric from a first warmup
+  window and re-tunes under it, so ill-conditioned targets mix at a far larger
+  step (`x ← x − εM∇E + √(2εM)ξ`, still exact). Validated: acceptance → 0.574 and
+  covariance recovered on a correlated Gaussian; the metric recovers a 100:1
+  condition number. Example `adaptive_mala.py`.
 - **Classifier-free guidance & calibration.** `GuidedEnergy` (+
   `ClassifierEnergy.guide`) — `Ẽ_w(x|y) = (1+w)E(x|y) − w E(x)` to sharpen class
   selection; and `eval.expected_calibration_error` / `reliability_curve` /

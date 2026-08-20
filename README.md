@@ -45,7 +45,7 @@ returns `LossOutput(loss, metrics, x_neg)`; call `out.loss.backward()`).
 | Piece | Contents |
 |---|---|
 | **Energies** | any callable `(B, *shape) -> (B,)`; `nets.MLPEnergy` / `ConvEnergy` / `ResNetEnergy` / `ConvClassifier` (SiLU, optional spectral norm, no batch norm), `nets.RBM` (Bernoulli RBM with exact `log_z`), `GuidedEnergy` (classifier-free guidance), `nets.IsingEnergy` / `PottsEnergy` (discrete lattices), `nets.FunnelEnergy` / `GaussianMixtureEnergy` / `BananaEnergy` (closed-form targets), `nets.AffineCouplingFlow` (RealNVP) / `nets.ContinuousNormalizingFlow` (FFJORD — trainable exact-likelihood flows / self-normalized energies), noise-conditional variants for NCSN; `EnergyModel`, `ebm.score` |
-| **Samplers** | `LangevinDynamics` (ULA/SGLD), `MALA`, `HMC`, `UnderdampedLangevin` (SGHMC), `PreconditionedLangevin`, `ParallelTempering` (replica exchange), `TemperedTransitions`, `SVGD` (Stein variational), `GibbsSampler` (block Gibbs), `GibbsWithGradients` + `CategoricalGibbsWithGradients`, `AnnealedLangevinDynamics`, `ProbabilityFlowODE` / `PredictorCorrector` (score-SDE), `DDPMAncestralSampler` (VP diffusion) |
+| **Samplers** | `LangevinDynamics` (ULA/SGLD), `MALA`, `AdaptiveMALA` (dual-averaging step-size warmup + diagonal metric), `HMC`, `UnderdampedLangevin` (SGHMC), `PreconditionedLangevin`, `ParallelTempering` (replica exchange), `TemperedTransitions`, `SVGD` (Stein variational), `GibbsSampler` (block Gibbs), `GibbsWithGradients` + `CategoricalGibbsWithGradients`, `AnnealedLangevinDynamics`, `ProbabilityFlowODE` / `PredictorCorrector` (score-SDE), `DDPMAncestralSampler` (VP diffusion) |
 | **Losses** | `ContrastiveDivergence` (CD-k / persistent CD), `DiffusionRecoveryLikelihood` + `drl_sample`, `DenoisingScoreMatching` / `MultiSigmaDenoisingScoreMatching` (NCSN), `VPDenoisingScoreMatching` (DDPM), `SlicedScoreMatching`, `ExactScoreMatching`, `EnergyDiscrepancy` (MCMC-free), `PseudoLikelihood` / `RatioMatching` / `ConcreteScoreMatching` (MCMC-free, discrete), `NoiseContrastiveEstimation`, `JEMLoss` |
 | **Composition** | `SumEnergy` (product of experts), `MixtureEnergy`, `TemperedEnergy` — energies compose like densities and nest |
 | **Training** | thin `Trainer` (device, EMA, supervised batches, `save`/`load` checkpointing), `ReplayBuffer`, `EMA` |
@@ -74,6 +74,7 @@ Runnable scripts in [`examples/`](https://github.com/davidkhjo/ebmkit/tree/main/
 - `train_potts_concrete.py` — recover a categorical density with concrete score matching (no MCMC)
 - `train_energy_discrepancy.py` — two-moons trained MCMC-free (energy discrepancy)
 - `sampling_hard_targets.py` — parallel tempering escapes a trapped mode; ESS / R̂ diagnostics
+- `adaptive_mala.py` — a self-tuning MALA: dual-averaging step size + a learned diagonal metric
 - `goodness_of_fit.py` — KSD for model selection; classifier two-sample test
 - `mine_mutual_information.py` — estimate mutual information with MINE vs the Gaussian closed form
 - `benchmark_samplers.py` — rank samplers on the banana against exact draws (ESS, R̂, MMD)
