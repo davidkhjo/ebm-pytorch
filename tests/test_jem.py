@@ -1,3 +1,4 @@
+import pytest
 import torch
 from torch import nn
 
@@ -141,3 +142,44 @@ def test_jem_joint_training_two_gaussians():
     s1 = sampler.sample(energy.condition(1), torch.randn(256, 2))
     assert s0[:, 0].mean() < 0
     assert s1[:, 0].mean() > 0
+
+
+class _GaussianLogits(nn.Module):
+    """Logits[:, k] = -½‖x - μ_k‖² so E(x|k)=½‖x-μ_k‖² and the marginal is a mixture."""
+
+    def __init__(self, mus):
+        super().__init__()
+        self.register_buffer("mus", mus)
+
+    def forward(self, x):
+        return torch.stack(
+            [-0.5 * ((x - self.mus[k]) ** 2).sum(1) for k in range(len(self.mus))], 1
+        )
+
+
+def test_guided_energy_formula_and_validation():
+    ce = ebm.ClassifierEnergy(nn.Linear(2, 3))
+    x = torch.randn(50, 2)
+    w = 2.5
+    manual = (1 + w) * ce.conditional(x, 1) - w * ce(x)
+    assert torch.allclose(ce.guide(1, w)(x), manual)  # exact CFG formula
+    with pytest.raises(ValueError):
+        ebm.GuidedEnergy(ce, 0, weight=-1.0)
+
+
+def test_guided_energy_recovers_conditional_mean():
+    mu = torch.tensor([[2.0, -1.0], [-3.0, 3.0]])
+    ce = ebm.ClassifierEnergy(_GaussianLogits(mu))
+    samples = ebm.MALA(step_size=0.05, steps=400).sample(ce.guide(0, 3.0), torch.randn(4000, 2))
+    assert (samples.mean(0) - mu[0]).abs().max().item() < 0.1
+
+
+def test_guided_energy_suppresses_the_wrong_mode():
+    ce = ebm.ClassifierEnergy(_GaussianLogits(torch.tensor([[-2.0, 0.0], [2.0, 0.0]])))
+    fracs = []
+    for w in (0.0, 2.0, 6.0):
+        torch.manual_seed(1)
+        s = ebm.MALA(step_size=0.05, steps=400).sample(ce.guide(0, w), 2 * torch.randn(3000, 2))
+        fracs.append((s[:, 0] < 0).float().mean().item())  # class-0 mode is at x0<0
+    assert fracs[0] < fracs[1] < fracs[2]  # guidance monotonically suppresses the wrong mode
+    assert fracs[2] > 0.99

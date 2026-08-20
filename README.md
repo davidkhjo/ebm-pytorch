@@ -44,12 +44,12 @@ returns `LossOutput(loss, metrics, x_neg)`; call `out.loss.backward()`).
 
 | Piece | Contents |
 |---|---|
-| **Energies** | any callable `(B, *shape) -> (B,)`; `nets.MLPEnergy` / `ConvEnergy` / `ResNetEnergy` / `ConvClassifier` (SiLU, optional spectral norm, no batch norm), `nets.RBM` (Bernoulli RBM with exact `log_z`), `nets.IsingEnergy` / `PottsEnergy` (discrete lattices), `nets.FunnelEnergy` / `GaussianMixtureEnergy` / `BananaEnergy` (closed-form targets), `nets.AffineCouplingFlow` (RealNVP) / `nets.ContinuousNormalizingFlow` (FFJORD — trainable exact-likelihood flows / self-normalized energies), noise-conditional variants for NCSN; `EnergyModel`, `ebm.score` |
+| **Energies** | any callable `(B, *shape) -> (B,)`; `nets.MLPEnergy` / `ConvEnergy` / `ResNetEnergy` / `ConvClassifier` (SiLU, optional spectral norm, no batch norm), `nets.RBM` (Bernoulli RBM with exact `log_z`), `GuidedEnergy` (classifier-free guidance), `nets.IsingEnergy` / `PottsEnergy` (discrete lattices), `nets.FunnelEnergy` / `GaussianMixtureEnergy` / `BananaEnergy` (closed-form targets), `nets.AffineCouplingFlow` (RealNVP) / `nets.ContinuousNormalizingFlow` (FFJORD — trainable exact-likelihood flows / self-normalized energies), noise-conditional variants for NCSN; `EnergyModel`, `ebm.score` |
 | **Samplers** | `LangevinDynamics` (ULA/SGLD), `MALA`, `HMC`, `UnderdampedLangevin` (SGHMC), `PreconditionedLangevin`, `ParallelTempering` (replica exchange), `TemperedTransitions`, `SVGD` (Stein variational), `GibbsSampler` (block Gibbs), `GibbsWithGradients` + `CategoricalGibbsWithGradients`, `AnnealedLangevinDynamics`, `ProbabilityFlowODE` / `PredictorCorrector` (score-SDE), `DDPMAncestralSampler` (VP diffusion) |
 | **Losses** | `ContrastiveDivergence` (CD-k / persistent CD), `DiffusionRecoveryLikelihood` + `drl_sample`, `DenoisingScoreMatching` / `MultiSigmaDenoisingScoreMatching` (NCSN), `VPDenoisingScoreMatching` (DDPM), `SlicedScoreMatching`, `ExactScoreMatching`, `EnergyDiscrepancy` (MCMC-free), `PseudoLikelihood` / `RatioMatching` / `ConcreteScoreMatching` (MCMC-free, discrete), `NoiseContrastiveEstimation`, `JEMLoss` |
 | **Composition** | `SumEnergy` (product of experts), `MixtureEnergy`, `TemperedEnergy` — energies compose like densities and nest |
 | **Training** | thin `Trainer` (device, EMA, supervised batches, `save`/`load` checkpointing), `ReplayBuffer`, `EMA` |
-| **Eval** | `ais_log_z` / `reverse_ais_log_z` (bracket `log Z`), `pf_ode_log_likelihood` (exact likelihood via the probability-flow ODE), `bits_per_dim`, `frechet_distance` (FID), `mmd`, `precision_recall`, `inception_score`, `kernel_stein_discrepancy` / `classifier_two_sample_test` / `fisher_divergence` (goodness-of-fit), `mutual_information` (MINE), `ood_auroc`, `effective_sample_size` / `split_rhat` (MCMC diagnostics) |
+| **Eval** | `ais_log_z` / `reverse_ais_log_z` (bracket `log Z`), `pf_ode_log_likelihood` (exact likelihood via the probability-flow ODE), `bits_per_dim`, `frechet_distance` (FID), `mmd`, `precision_recall`, `inception_score`, `kernel_stein_discrepancy` / `classifier_two_sample_test` / `fisher_divergence` (goodness-of-fit), `mutual_information` (MINE), `expected_calibration_error` / `reliability_curve` / `temperature_scale` (calibration), `ood_auroc`, `effective_sample_size` / `split_rhat` (MCMC diagnostics) |
 | **Data & viz** | 2D toys (`two_moons`, `eight_gaussians`, `checkerboard`, `rings`, `spirals`) and torchvision-free image loaders (`mnist`, `fashion_mnist`, `cifar10`, `cifar100`); `viz.energy_contour` / `plot_samples` / `energy_histogram` / `show_images` |
 
 ## Examples
@@ -58,6 +58,7 @@ Runnable scripts in [`examples/`](https://github.com/davidkhjo/ebmkit/tree/main/
 
 - `train_two_moons.py` — the canonical 2D contrastive-divergence smoke test
 - `train_jem.py` / `train_mnist_jem.py` — classify, generate, and detect OOD with one network
+- `jem_guidance.py` — classifier-free guidance sharpening class-conditional samples
 - `train_mnist.py` — the image-scale IGEBM short-run recipe
 - `train_composition.py` — product of experts / mixture / tempering, without retraining
 - `train_ising.py` / `train_potts.py` — discrete lattices via (categorical) Gibbs-with-Gradients

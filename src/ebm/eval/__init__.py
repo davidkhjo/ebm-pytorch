@@ -6,6 +6,11 @@ and the probability-flow ODE.
 """
 
 from ebm.ais import AISResult, ais_log_z, log_likelihood, reverse_ais_log_z
+from ebm.eval.calibration import (
+    expected_calibration_error,
+    reliability_curve,
+    temperature_scale,
+)
 from ebm.eval.diagnostics import (
     effective_sample_size,
     energies,
@@ -33,6 +38,7 @@ __all__ = [
     "classifier_two_sample_test",
     "effective_sample_size",
     "energies",
+    "expected_calibration_error",
     "fisher_divergence",
     "frechet_distance",
     "inception_score",
@@ -43,6 +49,8 @@ __all__ = [
     "ood_auroc",
     "pf_ode_log_likelihood",
     "precision_recall",
+    "reliability_curve",
     "reverse_ais_log_z",
     "split_rhat",
+    "temperature_scale",
 ]

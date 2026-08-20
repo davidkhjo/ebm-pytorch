@@ -437,3 +437,37 @@ def test_classifier_two_sample_test_validation():
         ebm.eval.classifier_two_sample_test(torch.randn(100, 2), torch.randn(100, 2), test_frac=0.0)
     with pytest.raises(ValueError):
         ebm.eval.classifier_two_sample_test(torch.randn(1, 2), torch.randn(1, 2))
+
+
+def test_expected_calibration_error_hand_binned():
+    # Two confidence bins: conf .6 (acc .5) and conf .9 (acc 1.0).
+    # ECE = .5·|.5-.6| + .5·|1-.9| = 0.1.
+    probs = torch.tensor([[0.6, 0.4], [0.6, 0.4], [0.9, 0.1], [0.9, 0.1]])
+    labels = torch.tensor([0, 1, 0, 0])
+    assert abs(ebm.eval.expected_calibration_error(probs, labels, n_bins=10) - 0.1) < 1e-6
+
+    # A perfectly-calibrated stream (confidence == accuracy) → ECE → 0.
+    n = 200000
+    conf = 0.5 + 0.5 * torch.rand(n)
+    correct = torch.rand(n) < conf
+    p = torch.stack([torch.where(correct, conf, 1 - conf), torch.where(correct, 1 - conf, conf)], 1)
+    assert ebm.eval.expected_calibration_error(p, torch.zeros(n, dtype=torch.long)) < 0.01
+
+
+def test_temperature_scaling_recovers_and_calibrates():
+    import torch.nn.functional as tnf
+
+    k, n = 5, 8000
+    true = torch.randn(n, k)
+    labels = torch.distributions.Categorical(logits=true).sample()
+    logits = true * 3.0  # over-confident relative to the label-generating softmax
+    t = ebm.eval.temperature_scale(logits, labels)
+    assert abs(t.item() - 3.0) < 0.5  # recovers the true temperature
+    assert tnf.cross_entropy(logits / t, labels) < tnf.cross_entropy(logits, labels)
+    ece0 = ebm.eval.expected_calibration_error(logits.softmax(1), labels)
+    ece_t = ebm.eval.expected_calibration_error((logits / t).softmax(1), labels)
+    assert ece_t < ece0
+
+    conf, acc, count = ebm.eval.reliability_curve(logits.softmax(1), labels, n_bins=10)
+    assert conf.shape == acc.shape == count.shape == (10,)
+    assert int(count.sum()) == n

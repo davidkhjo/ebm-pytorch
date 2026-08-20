@@ -10,7 +10,7 @@ from ebm.buffer import ReplayBuffer
 from ebm.compose import MixtureEnergy, SumEnergy, TemperedEnergy
 from ebm.diffusion import DDPMAncestralSampler, VPDenoisingScoreMatching, VPSchedule
 from ebm.energy import ConditionalEnergyFn, EnergyFn, EnergyModel, score
-from ebm.jem import ClassifierEnergy, ConditionalEnergy, JEMLoss
+from ebm.jem import ClassifierEnergy, ConditionalEnergy, GuidedEnergy, JEMLoss
 from ebm.losses import (
     ConcreteScoreMatching,
     ContrastiveDivergence,
@@ -71,6 +71,7 @@ __all__ = [
     "ExactScoreMatching",
     "GibbsSampler",
     "GibbsWithGradients",
+    "GuidedEnergy",
     "JEMLoss",
     "LangevinDynamics",
     "LossOutput",
