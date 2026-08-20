@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.16.0 — unreleased
+
+- **`LatentEBM`** — a latent-variable EBM: a joint `E(x, z) = E_prior(z) +
+  E(x | z)` coupling a prior over a latent `z` (default standard normal) with a
+  decoder energy. The data marginal is intractable, so `sample_joint` runs block
+  Gibbs — alternating an MCMC update of `z` under its posterior `E(z | x)` with an
+  update of `x` under `E(x | z)`; `posterior_energy` / `conditional_energy` expose
+  those blocks as plain `EnergyFn`s. Validated on the linear-Gaussian conjugate
+  case: block Gibbs recovers the exact marginal `N(0, WWᵀ + σ²I)` and the Gaussian
+  posterior `z | x`. Example `latent_ebm.py`.
+
 ## 0.15.0 — 2026-08-20
 
 The largest release yet: a variance-preserving diffusion track and trainable
