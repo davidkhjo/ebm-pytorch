@@ -1,3 +1,4 @@
+from ebm.samplers.adaptive import AdaptiveMALA
 from ebm.samplers.annealed import AnnealedLangevinDynamics
 from ebm.samplers.base import Sampler
 from ebm.samplers.discrete import CategoricalGibbsWithGradients, GibbsWithGradients
@@ -17,6 +18,7 @@ __all__ = [
     "HMC",
     "MALA",
     "SVGD",
+    "AdaptiveMALA",
     "AnnealedLangevinDynamics",
     "CategoricalGibbsWithGradients",
     "GibbsSampler",
