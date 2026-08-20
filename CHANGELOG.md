@@ -5,6 +5,14 @@
 Internal cleanup plus a diffusion track, exact-likelihood flows, and
 conditional-generation / calibration tools.
 
+- **`nets.NeuralSplineCouplingFlow`** — a rational-quadratic neural spline flow
+  (Durkan et al. 2019): monotonic-spline coupling layers dropped into the
+  affine-flow scaffold, strictly more expressive per layer, so it fits sharp
+  multi-modal 2D densities at a lower NLL than the affine flow for the same
+  depth. Same self-normalized contract (exact `log_prob`, one-pass sampling,
+  `forward = -log_prob`). Validated: exact invertibility incl. the linear tails
+  and analytic `log|det|` vs the autograd Jacobian (to 1e-8 in double precision);
+  fits a Gaussian and two-moons. Example `train_spline_flow.py`.
 - **Self-tuning sampler.** `AdaptiveMALA` — a MALA that tunes its own
   `step_size` by Nesterov dual averaging (Hoffman & Gelman 2014) to the
   MALA-optimal 0.574 acceptance during a warmup, then freezes and samples

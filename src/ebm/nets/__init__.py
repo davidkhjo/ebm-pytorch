@@ -22,6 +22,7 @@ from ebm.nets.noise_conditional import (
 from ebm.nets.noise_conditional import (
     _GaussianFourierFeatures as _GaussianFourierFeatures,  # re-export for tests
 )
+from ebm.nets.spline_flow import NeuralSplineCouplingFlow
 from ebm.nets.targets import BananaEnergy, FunnelEnergy, GaussianMixtureEnergy
 
 __all__ = [
@@ -35,6 +36,7 @@ __all__ = [
     "GaussianMixtureEnergy",
     "IsingEnergy",
     "MLPEnergy",
+    "NeuralSplineCouplingFlow",
     "NoiseConditionalConvEnergy",
     "NoiseConditionalMLPEnergy",
     "PottsEnergy",
