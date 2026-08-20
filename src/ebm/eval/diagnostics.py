@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import torch
 from torch import Tensor
 
 from ebm.energy import EnergyFn
+
+if TYPE_CHECKING:
+    from ebm.compose import EnsembleEnergy
 
 
 def _as_chains(samples: Tensor) -> Tensor:
@@ -105,9 +110,45 @@ def effective_sample_size(samples: Tensor) -> Tensor:
 
 
 @torch.no_grad()
+def autocorrelation(samples: Tensor, max_lag: int = 40) -> Tensor:
+    """Mean per-chain autocorrelation ``ρ̂_t`` for lags ``0..max_lag``, per dimension.
+
+    Input is ``(n_chains, n_samples[, dim])``. Returns ``(max_lag+1, dim)`` (lag 0
+    is ``1``). Computed by FFT (zero-padded past ``2N``) and averaged over chains —
+    the same autocovariance used by `effective_sample_size`. A chain that mixes
+    well decays toward zero within a few lags; slow decay flags autocorrelation.
+    """
+    x = _as_chains(samples)
+    _, n, _ = x.shape
+    max_lag = min(max_lag, n - 1)
+    centered = x - x.mean(dim=1, keepdim=True)
+    n_fft = 1
+    while n_fft < 2 * n:
+        n_fft <<= 1
+    spec = torch.fft.rfft(centered, n=n_fft, dim=1)
+    acov = torch.fft.irfft(spec.abs().pow(2), n=n_fft, dim=1)[:, :n, :]  # (M, N, d)
+    acf = acov / acov[:, :1, :]  # normalize by lag-0 per chain/dim
+    return acf.mean(dim=0)[: max_lag + 1]
+
+
+@torch.no_grad()
 def energies(energy: EnergyFn, x: Tensor, batch_size: int = 1024) -> Tensor:
     """Energies of ``x`` computed in batches, returned on CPU."""
     out = [energy(chunk).detach().cpu() for chunk in x.split(batch_size)]
+    return torch.cat(out)
+
+
+@torch.no_grad()
+def ensemble_disagreement(ensemble: EnsembleEnergy, x: Tensor, batch_size: int = 1024) -> Tensor:
+    """Per-sample ensemble disagreement (variance of member energies), batched.
+
+    The spread of an ensemble's member energies is an *epistemic* uncertainty
+    signal: members trained on the same data agree where they saw data and
+    diverge off-distribution, so `ensemble_disagreement` tends to be much larger
+    on OOD inputs — feed it to `ood_auroc` as a detector. Returns a ``(B,)`` tensor
+    on CPU.
+    """
+    out = [ensemble.disagreement(chunk).detach().cpu() for chunk in x.split(batch_size)]
     return torch.cat(out)
 
 

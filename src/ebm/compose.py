@@ -82,6 +82,36 @@ class MixtureEnergy(_Composite):
         return -torch.logsumexp(stacked, dim=0)
 
 
+class EnsembleEnergy(_Composite):
+    """Deep ensemble as a **mean energy**: ``E(x) = (1/N) Σ_i E_i(x)``.
+
+    Averaging energies is the *geometric* mean of the members' densities
+    (``p ∝ Π p_i^{1/N}``) — the variance-reduced log-density estimate you want
+    from a deep ensemble, and equivalent to ``SumEnergy`` with weights ``1/N``.
+    This is deliberately distinct from `MixtureEnergy`, which mixes densities
+    with a ``logsumexp`` (an *arithmetic* mean).
+
+    Beyond the pooled energy, the spread of the members carries epistemic
+    uncertainty: `member_energies(x)` returns the ``(B, N)`` per-member energies
+    and `disagreement(x)` their per-sample variance — low where the members agree
+    (seen data), high off-distribution. See `eval.ensemble_disagreement`.
+    """
+
+    def __init__(self, *energies: EnergyFn):
+        super().__init__(energies)
+
+    def member_energies(self, x: Tensor) -> Tensor:
+        """Per-member energies, stacked as ``(B, N)``."""
+        return torch.stack([e(x) for e in self.energies], dim=1)
+
+    def forward(self, x: Tensor) -> Tensor:
+        return self.member_energies(x).mean(dim=1)
+
+    def disagreement(self, x: Tensor) -> Tensor:
+        """Per-sample variance across members ``(B,)`` — an epistemic OOD signal."""
+        return self.member_energies(x).var(dim=1, unbiased=False)
+
+
 class TemperedEnergy(nn.Module):
     """``E(x) / T``: temperature ``T > 1`` flattens ``p``, ``T < 1`` sharpens it.
 

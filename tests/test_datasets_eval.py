@@ -47,6 +47,16 @@ def test_ess_matches_ar1_closed_form(rho):
     assert abs(ess - predicted) / predicted < 0.2
 
 
+def test_autocorrelation_matches_ar1():
+    # A stationary AR(1) has ρ̂_t = ρ^t; check the estimator recovers it.
+    m, n, rho = 16, 4000, 0.7
+    acf = ebm.eval.autocorrelation(_ar1(m, n, rho), max_lag=8)
+    assert acf.shape == (9, 1)
+    theory = torch.tensor([rho**k for k in range(9)])
+    assert (acf[:, 0] - theory).abs().max().item() < 0.03
+    assert acf[0, 0].item() == pytest.approx(1.0)
+
+
 def test_diagnostics_reject_too_short():
     with pytest.raises(ValueError):
         ebm.eval.effective_sample_size(torch.randn(4, 3, 2))

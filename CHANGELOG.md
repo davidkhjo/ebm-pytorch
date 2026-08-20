@@ -5,6 +5,14 @@
 Internal cleanup plus a diffusion track, exact-likelihood flows, and
 conditional-generation / calibration tools.
 
+- **Diagnostics & ensemble uncertainty.** `viz.autocorrelation_plot` /
+  `rank_plot` / `trace_plot` and a numeric `eval.autocorrelation` for judging MCMC
+  mixing; `EnsembleEnergy` (a deep-ensemble *mean* energy — the geometric-mean
+  density, distinct from `MixtureEnergy`'s logsumexp) with `member_energies` /
+  `disagreement`, plus `eval.ensemble_disagreement` as an epistemic OOD score.
+  Validated: the ACF estimator matches an AR(1)'s `ρ^t`; the ensemble reproduces
+  the closed-form combined Gaussian; disagreement separates in-distribution from
+  OOD at AUROC ≈ 1. Example `ensemble_ood.py`.
 - **`nets.NeuralSplineCouplingFlow`** — a rational-quadratic neural spline flow
   (Durkan et al. 2019): monotonic-spline coupling layers dropped into the
   affine-flow scaffold, strictly more expressive per layer, so it fits sharp

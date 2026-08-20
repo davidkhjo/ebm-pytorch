@@ -77,3 +77,32 @@ def test_compositions_nest():
         ebm.SumEnergy(quadratic_energy, ebm.MixtureEnergy(quadratic_energy)), 2.0
     )
     assert nested(torch.randn(8, 2)).shape == (8,)
+
+
+def test_ensemble_energy_is_geometric_mean_gaussian():
+    # Members N(0, σ_i²) → mean energy is N(0, 1/precision), precision = mean(1/σ_i²).
+    sigmas = [1.0, 0.5, 2.0]
+    members = [gaussian_energy(0.0, s**2) for s in sigmas]
+    ens = ebm.EnsembleEnergy(*members)
+    precision = sum(1 / s**2 for s in sigmas) / len(sigmas)
+    samples = ebm.MALA(step_size=0.1, steps=800).sample(ens, torch.randn(6000, 2))
+    assert (samples.var(0) - 1 / precision).abs().max().item() < 0.05
+    # member_energies stacks per-member; forward is their mean.
+    x = torch.randn(16, 2)
+    me = ens.member_energies(x)
+    assert me.shape == (16, 3)
+    assert torch.allclose(ens(x), me.mean(dim=1))
+
+
+def test_ensemble_disagreement_flags_ood():
+    sigmas = [1.0, 0.5, 2.0]
+    ens = ebm.EnsembleEnergy(*[gaussian_energy(0.0, s**2) for s in sigmas])
+    x_in = torch.randn(2000, 2)
+    x_out = 6.0 + torch.randn(2000, 2)
+    d_in = ebm.eval.ensemble_disagreement(ens, x_in)
+    d_out = ebm.eval.ensemble_disagreement(ens, x_out)
+    assert d_in.shape == (2000,)
+    assert d_out.mean() > 50 * d_in.mean()  # members diverge off-distribution
+    # As an OOD score it separates the two sets almost perfectly.
+    auroc = ebm.eval.ood_auroc(lambda z: ebm.eval.ensemble_disagreement(ens, z), x_in, x_out)
+    assert auroc > 0.99
