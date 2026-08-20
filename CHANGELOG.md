@@ -1,9 +1,12 @@
 # Changelog
 
-## 0.15.0 — unreleased
+## 0.15.0 — 2026-08-20
 
-Internal cleanup plus a diffusion track, exact-likelihood flows, and
-conditional-generation / calibration tools.
+The largest release yet: a variance-preserving diffusion track and trainable
+exact-likelihood flows (CNF + spline), classifier-free guidance and calibration,
+a self-tuning MALA, and ensemble-uncertainty / MCMC-diagnostic tooling — plus an
+internal restructure. Every feature is closed-form or distributionally validated
+and torch-only.
 
 - **Diagnostics & ensemble uncertainty.** `viz.autocorrelation_plot` /
   `rank_plot` / `trace_plot` and a numeric `eval.autocorrelation` for judging MCMC
