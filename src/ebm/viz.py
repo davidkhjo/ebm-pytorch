@@ -9,7 +9,15 @@ from torch import Tensor
 
 from ebm.energy import EnergyFn
 
-__all__ = ["energy_contour", "energy_histogram", "plot_samples", "show_images"]
+__all__ = [
+    "autocorrelation_plot",
+    "energy_contour",
+    "energy_histogram",
+    "plot_samples",
+    "rank_plot",
+    "show_images",
+    "trace_plot",
+]
 
 
 def _require_matplotlib():
@@ -111,6 +119,86 @@ def show_images(
     ax.axis("off")
     if title is not None:
         ax.set_title(title)
+    return ax
+
+
+@torch.no_grad()
+def _chain_ranks(samples: Tensor, dim: int = 0) -> Tensor:
+    """Rank each draw among the pooled draws of all chains; returns ``(n_chains, n_samples)``."""
+    from ebm.eval.diagnostics import _as_chains
+
+    x = _as_chains(samples)[..., dim]  # (M, N)
+    m, n = x.shape
+    order = x.reshape(-1).argsort()
+    ranks = torch.empty(m * n, dtype=torch.float64)
+    ranks[order] = torch.arange(1, m * n + 1, dtype=torch.float64)
+    return ranks.reshape(m, n)
+
+
+@torch.no_grad()
+def autocorrelation_plot(samples: Tensor, max_lag: int = 40, dim: int = 0, ax=None):
+    """Autocorrelation ``ρ̂_t`` vs lag for MCMC output, with a ``±1.96/√N`` band. Returns the axes.
+
+    Input is ``(n_chains, n_samples[, dim])``. Bars decaying to inside the band
+    within a few lags indicate good mixing; a slow decay flags autocorrelation.
+    """
+    from ebm.eval.diagnostics import autocorrelation
+
+    plt = _require_matplotlib()
+    acf = autocorrelation(samples, max_lag)[:, dim]
+    n = samples.shape[1]
+    if ax is None:
+        _, ax = plt.subplots(figsize=(6, 4))
+    ax.bar(range(len(acf)), acf.numpy(), width=0.8, color="#5c50c9")
+    band = 1.96 / (n**0.5)
+    for y in (band, -band):
+        ax.axhline(y, ls="--", color="gray", lw=1)
+    ax.axhline(0.0, color="black", lw=0.8)
+    ax.set_xlabel("lag")
+    ax.set_ylabel("autocorrelation")
+    return ax
+
+
+@torch.no_grad()
+def rank_plot(samples: Tensor, dim: int = 0, bins: int = 20, ax=None):
+    """Vehtari rank histogram per chain (uniform under good mixing). Returns the axes.
+
+    Ranks every draw among the pooled draws of all chains, then histograms each
+    chain's ranks. Well-mixed chains give flat, overlapping histograms near the
+    dashed uniform line; a chain offset from the others shows a sloped or skewed
+    histogram. Reference: Vehtari et al. (2021).
+    """
+    plt = _require_matplotlib()
+    ranks = _chain_ranks(samples, dim)
+    m, n = ranks.shape
+    edges = torch.linspace(1, m * n, bins + 1).numpy()
+    if ax is None:
+        _, ax = plt.subplots(figsize=(6, 4))
+    for i in range(m):
+        ax.hist(ranks[i].numpy(), bins=edges, histtype="step", alpha=0.7)
+    ax.axhline(n / bins, ls="--", color="gray", lw=1)  # uniform expectation per bin
+    ax.set_xlabel("rank")
+    ax.set_ylabel("count")
+    return ax
+
+
+@torch.no_grad()
+def trace_plot(samples: Tensor, dim: int = 0, max_chains: int = 8, ax=None):
+    """Trace of each chain's value over iterations (mixing at a glance). Returns the axes.
+
+    Input is ``(n_chains, n_samples[, dim])``. Chains that overlap and wander
+    across the same range have mixed; a chain stuck at a different level has not.
+    """
+    from ebm.eval.diagnostics import _as_chains
+
+    plt = _require_matplotlib()
+    x = _as_chains(samples)[..., dim]
+    if ax is None:
+        _, ax = plt.subplots(figsize=(8, 4))
+    for i in range(min(x.shape[0], max_chains)):
+        ax.plot(x[i].numpy(), alpha=0.7, lw=0.8)
+    ax.set_xlabel("iteration")
+    ax.set_ylabel(f"dim {dim}")
     return ax
 
 
