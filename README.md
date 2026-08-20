@@ -44,7 +44,7 @@ returns `LossOutput(loss, metrics, x_neg)`; call `out.loss.backward()`).
 
 | Piece | Contents |
 |---|---|
-| **Energies** | any callable `(B, *shape) -> (B,)`; `nets.MLPEnergy` / `ConvEnergy` / `ResNetEnergy` / `ConvClassifier` (SiLU, optional spectral norm, no batch norm), `nets.RBM` (Bernoulli RBM with exact `log_z`), `GuidedEnergy` (classifier-free guidance), `nets.IsingEnergy` / `PottsEnergy` (discrete lattices), `nets.FunnelEnergy` / `GaussianMixtureEnergy` / `BananaEnergy` (closed-form targets), `nets.AffineCouplingFlow` (RealNVP) / `nets.ContinuousNormalizingFlow` (FFJORD — trainable exact-likelihood flows / self-normalized energies), noise-conditional variants for NCSN; `EnergyModel`, `ebm.score` |
+| **Energies** | any callable `(B, *shape) -> (B,)`; `nets.MLPEnergy` / `ConvEnergy` / `ResNetEnergy` / `ConvClassifier` (SiLU, optional spectral norm, no batch norm), `nets.RBM` (Bernoulli RBM with exact `log_z`), `GuidedEnergy` (classifier-free guidance), `nets.IsingEnergy` / `PottsEnergy` (discrete lattices), `nets.FunnelEnergy` / `GaussianMixtureEnergy` / `BananaEnergy` (closed-form targets), `nets.AffineCouplingFlow` (RealNVP) / `nets.NeuralSplineCouplingFlow` (rational-quadratic spline) / `nets.ContinuousNormalizingFlow` (FFJORD — trainable exact-likelihood flows / self-normalized energies), noise-conditional variants for NCSN; `EnergyModel`, `ebm.score` |
 | **Samplers** | `LangevinDynamics` (ULA/SGLD), `MALA`, `AdaptiveMALA` (dual-averaging step-size warmup + diagonal metric), `HMC`, `UnderdampedLangevin` (SGHMC), `PreconditionedLangevin`, `ParallelTempering` (replica exchange), `TemperedTransitions`, `SVGD` (Stein variational), `GibbsSampler` (block Gibbs), `GibbsWithGradients` + `CategoricalGibbsWithGradients`, `AnnealedLangevinDynamics`, `ProbabilityFlowODE` / `PredictorCorrector` (score-SDE), `DDPMAncestralSampler` (VP diffusion) |
 | **Losses** | `ContrastiveDivergence` (CD-k / persistent CD), `DiffusionRecoveryLikelihood` + `drl_sample`, `DenoisingScoreMatching` / `MultiSigmaDenoisingScoreMatching` (NCSN), `VPDenoisingScoreMatching` (DDPM), `SlicedScoreMatching`, `ExactScoreMatching`, `EnergyDiscrepancy` (MCMC-free), `PseudoLikelihood` / `RatioMatching` / `ConcreteScoreMatching` (MCMC-free, discrete), `NoiseContrastiveEstimation`, `JEMLoss` |
 | **Composition** | `SumEnergy` (product of experts), `MixtureEnergy`, `TemperedEnergy` — energies compose like densities and nest |
@@ -67,6 +67,7 @@ Runnable scripts in [`examples/`](https://github.com/davidkhjo/ebmkit/tree/main/
 - `train_diffusion.py` — a variance-preserving (DDPM) diffusion, energy-parameterized
 - `exact_likelihood_ode.py` — exact bits/dim for a score model via the probability-flow ODE
 - `train_flow.py` — a RealNVP normalizing flow with exact density and sampling
+- `train_spline_flow.py` — a rational-quadratic spline flow: sharper fit than affine at equal depth
 - `train_cnf.py` — a continuous normalizing flow (FFJORD): exact likelihood by ODE
 - `train_cifar_ood.py` — energy-based OOD at color scale (CIFAR-10 vs CIFAR-100)
 - `train_rbm.py` — a Bernoulli RBM on binary bars via CD-1, with the exact `log Z`
