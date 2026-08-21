@@ -2,6 +2,15 @@
 
 ## 0.16.0 — unreleased
 
+- **`NUTS`** — the No-U-Turn Sampler (Hoffman & Gelman 2014, multinomial variant):
+  HMC that tunes its own trajectory length (doubling until a whole-span U-turn) and
+  step size (dual-averaging warmup to `target_accept`), so it needs neither
+  `leapfrog_steps` nor a step-size sweep. All chains are evolved in lockstep with a
+  per-chain freeze mask, so each chain's draw is identical to independent
+  single-chain NUTS. Exposes `last_tree_depth` and a `divergences` count. Validated:
+  recovers a standard and a correlated Gaussian's covariance, tunes to 0.8
+  acceptance, enters Neal's funnel, and terminates by U-turn (small tree depths,
+  zero divergences on the Gaussian). Example `nuts_sampling.py`.
 - **`LatentEBM`** — a latent-variable EBM: a joint `E(x, z) = E_prior(z) +
   E(x | z)` coupling a prior over a latent `z` (default standard normal) with a
   decoder energy. The data marginal is intractable, so `sample_joint` runs block
