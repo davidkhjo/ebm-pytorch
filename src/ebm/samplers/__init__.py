@@ -10,6 +10,7 @@ from ebm.samplers.langevin import (
     PreconditionedLangevin,
     UnderdampedLangevin,
 )
+from ebm.samplers.nuts import NUTS
 from ebm.samplers.score_sde import PredictorCorrector, ProbabilityFlowODE
 from ebm.samplers.svgd import SVGD
 from ebm.samplers.tempering import ParallelTempering, TemperedTransitions
@@ -17,6 +18,7 @@ from ebm.samplers.tempering import ParallelTempering, TemperedTransitions
 __all__ = [
     "HMC",
     "MALA",
+    "NUTS",
     "SVGD",
     "AdaptiveMALA",
     "AnnealedLangevinDynamics",
