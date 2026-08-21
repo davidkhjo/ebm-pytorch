@@ -31,6 +31,7 @@ from ebm.losses import (
 from ebm.samplers import (
     HMC,
     MALA,
+    NUTS,
     SVGD,
     AdaptiveMALA,
     AnnealedLangevinDynamics,
@@ -55,6 +56,7 @@ __all__ = [
     "EMA",
     "HMC",
     "MALA",
+    "NUTS",
     "SVGD",
     "AISResult",
     "AdaptiveMALA",

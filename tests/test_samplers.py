@@ -245,3 +245,60 @@ def test_adaptive_mala_zero_warmup_keeps_step_size_and_validates():
         ebm.AdaptiveMALA(target_accept=1.5)
     with pytest.raises(ValueError):
         ebm.AdaptiveMALA(warmup=-1)
+
+
+def test_nuts_targets_standard_normal_and_tunes_step_size():
+    sampler = ebm.NUTS(step_size=0.5, steps=80, warmup=200)
+    samples = sampler.sample(quadratic_energy, 3 * torch.randn(2000, 2))
+    _check_standard_normal(samples)
+    assert not samples.requires_grad
+    assert abs(sampler.last_accept_rate - 0.8) < 0.1  # dual averaging hits the target
+    assert sampler.divergences == 0  # a smooth Gaussian never diverges
+
+
+def test_nuts_recovers_a_correlated_gaussian():
+    cov = torch.tensor([[2.0, 1.2], [1.2, 1.5]])
+    sampler = ebm.NUTS(step_size=0.5, steps=160, warmup=250)
+    traj = sampler.sample(
+        _correlated_gaussian(cov), 3 * torch.randn(3000, 2), return_trajectory=True
+    )
+    pooled = traj[-20:].reshape(-1, 2)  # pool near-independent late draws to cut MC noise
+    assert (torch.cov(pooled.T) - cov).abs().max().item() < 0.15
+
+
+def test_nuts_explores_neals_funnel():
+    # Identity-metric NUTS enters but under-samples the funnel neck, so v.std biases
+    # below the true 3 — assert only that it stays finite and spreads (loose band).
+    energy = ebm.nets.FunnelEnergy(dim=2, v_scale=3.0)
+    sampler = ebm.NUTS(step_size=0.3, steps=150, warmup=200)
+    samples = sampler.sample(energy, torch.randn(1500, 2))
+    assert torch.isfinite(samples).all()
+    assert 1.8 < samples[:, 0].std().item() < 3.3
+
+
+def test_nuts_tree_depth_terminates_by_uturn():
+    # On an easy Gaussian the U-turn fires at small depths — the tree should never
+    # bottom out at max_depth (which would mean it never detected a U-turn).
+    sampler = ebm.NUTS(step_size=0.5, steps=1, warmup=150)
+    x = sampler.sample(quadratic_energy, torch.randn(1024, 2))
+    depths = []
+    for _ in range(30):
+        x = sampler.step(quadratic_energy, x)
+        depths.append(sampler.last_tree_depth)
+    depths = torch.stack(depths)
+    assert (depths < sampler.max_depth).all()
+    assert depths.float().median().item() <= 3
+    assert (depths <= 3).float().mean().item() > 0.8
+
+
+def test_nuts_accept_lifecycle_and_validation():
+    sampler = ebm.NUTS(step_size=0.5, steps=5, warmup=0)
+    assert sampler.last_accept_rate is None  # nothing drawn yet
+    sampler.sample(quadratic_energy, torch.randn(64, 2))
+    assert isinstance(sampler.last_accept_rate, float)
+    with pytest.raises(ValueError):
+        ebm.NUTS(target_accept=1.5)
+    with pytest.raises(ValueError):
+        ebm.NUTS(warmup=-1)
+    with pytest.raises(ValueError):
+        ebm.NUTS(max_depth=0)
