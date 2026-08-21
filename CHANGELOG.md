@@ -1,6 +1,9 @@
 # Changelog
 
-## 0.16.0 — unreleased
+## 0.16.0 — 2026-08-21
+
+The No-U-Turn Sampler and a latent-variable EBM — the last two items on the
+roadmap. Both closed-form / distributionally validated and torch-only.
 
 - **`NUTS`** — the No-U-Turn Sampler (Hoffman & Gelman 2014, multinomial variant):
   HMC that tunes its own trajectory length (doubling until a whole-span U-turn) and
